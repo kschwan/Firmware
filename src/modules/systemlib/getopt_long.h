@@ -115,10 +115,10 @@ extern "C"
 #endif
 
   /* externally-defined variables */
-  extern char *optarg;
-  extern int optind;
+  //extern char *optarg;
+  //extern int optind;
   extern int opterr;
-  extern int optopt;
+  //extern int optopt;
 
   /* function prototypes */
 #if 0

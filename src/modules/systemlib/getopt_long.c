@@ -87,6 +87,7 @@ gpietsch@comcast.net
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "getopt_long.h"
 
 /* macros */
@@ -100,10 +101,10 @@ typedef enum GETOPT_ORDERING_T
 } GETOPT_ORDERING_T;
 
 /* globally-defined variables */
-char *optarg = NULL;
-int optind = 0;
+//char *optarg = NULL;
+//int optind = 0;
 int opterr = 1;
-int optopt = '?';
+//int optopt = '?';
 
 /* functions */
 
