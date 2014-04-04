@@ -31,9 +31,27 @@
 	],
 	"settings":
 	{
+		"AStyleFormatter":
+		{
+			"options_default":
+			{
+				"style": "linux",
+				"indent": "force-tab",
+				"indent-spaces": 8,
+				"indent-cases": true,
+				"indent-preprocessor": true,
+				"break-blocks": "default",
+				"pad-oper": true,
+				"pad-header": true,
+				"unpad-paren": true,
+				"keep-one-line-blocks": true,
+				"keep-one-line-statements": true,
+				"align-pointer": "name",
+				"align-reference": "name",
+			}
+		},
 		"tab_size": 8,
 		"translate_tabs_to_spaces": false,
-	       "highlight_line": true
 	},
 	"build_systems":
 	[
