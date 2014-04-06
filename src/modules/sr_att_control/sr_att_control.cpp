@@ -40,12 +40,41 @@
  * @author Thomas Larsen <thola11@student.sdu.dk>
  */
 
+#include <cxx/cunistd>
 #include "sr_att_control.h"
 
-SinglerotorAttitudeControl::SinglerotorAttitudeControl()
+namespace singlerotor
+{
+
+AttitudeController::AttitudeController()
 {
 }
 
-SinglerotorAttitudeControl::~SinglerotorAttitudeControl()
+AttitudeController::~AttitudeController()
 {
 }
+
+int AttitudeController::run(int argc, char *argv[])
+{
+	_isRunning = true;
+	_stop = false;
+
+	while (!_stop) {
+		sleep(1);
+	}
+
+	_isRunning = false;
+	return 0;
+}
+
+void AttitudeController::stop()
+{
+	_stop = true;
+}
+
+bool AttitudeController::isRunning() const
+{
+	return _isRunning;
+}
+
+} // namespace singlerotor

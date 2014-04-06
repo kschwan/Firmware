@@ -40,9 +40,27 @@
  * @author Thomas Larsen <thola11@student.sdu.dk>
  */
 
-class SinglerotorAttitudeControl
+#ifndef SR_ATT_CONTROL_H
+#define SR_ATT_CONTROL_H
+
+namespace singlerotor
+{
+
+class AttitudeController
 {
 public:
-	SinglerotorAttitudeControl();
-	~SinglerotorAttitudeControl();
+	AttitudeController();
+	~AttitudeController();
+
+	int run(int argc, char *argv[]);
+	void stop();
+	bool isRunning() const;
+
+private:
+	bool _isRunning;
+	bool _stop;
 };
+
+} // namespace singlerotor
+
+#endif // SR_ATT_CONTROL_H
