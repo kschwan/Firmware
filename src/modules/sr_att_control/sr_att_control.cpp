@@ -40,7 +40,7 @@
  * @author Thomas Larsen <thola11@student.sdu.dk>
  */
 
-#include <cxx/cunistd>
+#include <unistd.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
