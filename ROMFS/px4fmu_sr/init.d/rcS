@@ -1,0 +1,106 @@
+#!nsh
+#
+# PX4FMU startup script for singlerotor helicopter testing.
+#
+
+# Start uORB
+uorb start
+
+# Start CDC/ACM serial driver
+if sercon
+then
+	echo "[init] USB interface connected"
+	nshterm /dev/ttyACM0 &
+fi
+
+#
+# Try to mount the microSD card.
+#
+echo "[init] looking for microSD..."
+if mount -t vfat /dev/mmcsd0 /fs/microsd
+then
+	echo "[init] card mounted at /fs/microsd"
+	# Start playing the startup tune
+	tone_alarm start
+else
+	echo "[init] no microSD card found"
+	# Play SOS
+	tone_alarm error
+fi
+
+# Find IO board firmware
+if [ -f /etc/extras/px4io-v2_default.bin ]
+then
+	set io_file /etc/extras/px4io-v2_default.bin
+else
+	set io_file /etc/extras/px4io-v1_default.bin
+fi
+
+# Start PX4IO
+if px4io start
+then
+	echo "PX4IO OK"
+fi
+
+if px4io checkcrc $io_file
+then
+	echo "PX4IO CRC OK"
+else
+	echo "PX4IO CRC failure"
+	tone_alarm MBABGP
+	if px4io forceupdate 14662 $io_file
+	then
+		usleep 500000
+		if px4io start
+		then
+			echo "PX4IO restart OK"
+			tone_alarm MSPAA
+		else
+			echo "PX4IO restart failed"
+			tone_alarm MNGGG
+			sleep 5
+			reboot
+		fi
+	else
+		echo "PX4IO update failed"
+		tone_alarm MNGGG
+	fi
+fi
+
+# Start the Commander
+commander start
+
+# Start MAVLink
+mavlink start -d /dev/ttyS1
+
+# Start the datamanager
+dataman start
+
+# Start the navigator
+navigator start
+
+# Start logging
+if [ -d /fs/microsd ]
+then
+	if hw_ver compare PX4FMU_V1
+	then
+		echo "Start sdlog2 at 50Hz"
+		sdlog2 start -r 50 -a -b 8 -t
+	else
+		echo "Start sdlog2 at 200Hz"
+		sdlog2 start -r 200 -a -b 16 -t
+	fi
+fi
+
+# Sensors, Logging, GPS
+sh /etc/init.d/rc.sensors
+
+# Start GPS
+gps start
+
+# Estimators
+attitude_estimator_ekf start
+position_estimator_inav start
+
+# Start singlerotor controller apps
+sr_att_control --start
