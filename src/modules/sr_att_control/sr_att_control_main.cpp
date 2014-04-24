@@ -42,15 +42,9 @@
 
 #include <cxx/cstdlib>
 #include <cxx/cstdio>
-#include <systemlib/err.h>
 #include <systemlib/systemlib.h>
 #include <systemlib/getopt_long.h>
 #include "sr_att_control.h"
-
-// sys/types.h defines ERROR only for c (and not c++)?
-#ifndef ERROR
-static const int ERROR = -1;
-#endif
 
 /**
  * Entry point of the sr_att_control application when started from the shell and
