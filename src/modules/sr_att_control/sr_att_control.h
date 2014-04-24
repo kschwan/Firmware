@@ -54,10 +54,10 @@ public:
 
 	int run(int argc, char *argv[]);
 	void stop();
-	bool isRunning() const;
+	bool is_running() const;
 
 private:
-	bool _isRunning;
+	bool _is_running;
 	bool _stop;
 };
 

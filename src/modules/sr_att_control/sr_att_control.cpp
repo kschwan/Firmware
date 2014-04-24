@@ -56,14 +56,14 @@ AttitudeController::~AttitudeController()
 
 int AttitudeController::run(int argc, char *argv[])
 {
-	_isRunning = true;
+	_is_running = true;
 	_stop = false;
 
 	while (!_stop) {
 		sleep(1);
 	}
 
-	_isRunning = false;
+	_is_running = false;
 	return 0;
 }
 
@@ -72,9 +72,9 @@ void AttitudeController::stop()
 	_stop = true;
 }
 
-bool AttitudeController::isRunning() const
+bool AttitudeController::is_running() const
 {
-	return _isRunning;
+	return _is_running;
 }
 
 } // namespace singlerotor

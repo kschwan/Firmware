@@ -148,7 +148,7 @@ int sr_att_control_main(int argc, char *argv[])
 			break;
 
 		case 'a':
-			if (att_control != nullptr && att_control->isRunning()) {
+			if (att_control != nullptr && att_control->is_running()) {
 				fprintf(stderr, "already running\n");
 			} else {
 				att_control = new singlerotor::AttitudeController;
@@ -172,7 +172,7 @@ int sr_att_control_main(int argc, char *argv[])
 			break;
 
 		case 'b':
-			if (att_control != nullptr && att_control->isRunning()) {
+			if (att_control != nullptr && att_control->is_running()) {
 				att_control->stop();
 				printf("stopping...\n");
 			} else {
@@ -183,7 +183,7 @@ int sr_att_control_main(int argc, char *argv[])
 			break;
 
 		case 's':
-			if (att_control == nullptr || !att_control->isRunning()) {
+			if (att_control == nullptr || !att_control->is_running()) {
 				printf("stopped\n");
 			} else {
 				printf("running\n");
