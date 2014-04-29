@@ -5,7 +5,7 @@
 #
 # Use the configuration's ROMFS.
 #
-ROMFS_ROOT	 = $(PX4_BASE)/ROMFS/px4fmu_srtest
+ROMFS_ROOT	 = $(PX4_BASE)/ROMFS/px4fmu_sr
 ROMFS_OPTIONAL_FILES = $(PX4_BASE)/Images/px4io-v2_default.bin
 
 #
@@ -69,6 +69,7 @@ MODULES		+= modules/attitude_estimator_so3
 #
 # Vehicle Control
 #
+MODULES		+= modules/sr_tester
 MODULES		+= modules/sr_att_control
 
 #
