@@ -57,8 +57,21 @@ public:
 	bool is_running() const;
 
 private:
+	void subscribe_all();
+	void unsubscribe_all();
+
+private:
 	bool _is_running;
-	bool _stop;
+	bool _should_stop;
+
+	struct sub_handles_t {
+		int actuator_armed;
+		int vehicle_control_mode;
+		int vehicle_attitude;
+		int vehicle_attitude_setpoint;
+		int vehicle_rates_setpoint;
+		int manual_control_setpoint;
+	} _sub_handles;
 };
 
 } // namespace singlerotor

@@ -41,6 +41,15 @@
  */
 
 #include <unistd.h>
+#include <uORB/uORB.h>
+#include <uORB/topics/actuator_armed.h>
+#include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_rates_setpoint.h>
+#include <uORB/topics/manual_control_setpoint.h>
+//#include <systemlib/pid/pid.h>// ?
+#include <systemlib/err.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
@@ -57,24 +66,47 @@ AttitudeController::~AttitudeController()
 int AttitudeController::run(int argc, char *argv[])
 {
 	_is_running = true;
-	_stop = false;
+	_should_stop = false;
+	subscribe_all();
 
-	while (!_stop) {
+	while (!_should_stop) {
 		sleep(1);
 	}
 
+	unsubscribe_all();
 	_is_running = false;
 	return 0;
 }
 
 void AttitudeController::stop()
 {
-	_stop = true;
+	_should_stop = true;
 }
 
 bool AttitudeController::is_running() const
 {
 	return _is_running;
 }
+
+void AttitudeController::subscribe_all()
+{
+	_sub_handles.actuator_armed = orb_subscribe(ORB_ID(actuator_armed));
+	_sub_handles.vehicle_control_mode = orb_subscribe(ORB_ID(vehicle_control_mode));
+	_sub_handles.vehicle_attitude = orb_subscribe(ORB_ID(vehicle_attitude));
+	_sub_handles.vehicle_attitude_setpoint = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
+	_sub_handles.vehicle_rates_setpoint = orb_subscribe(ORB_ID(vehicle_rates_setpoint));
+	_sub_handles.manual_control_setpoint = orb_subscribe(ORB_ID(manual_control_setpoint));
+}
+
+void AttitudeController::unsubscribe_all()
+{
+	orb_unsubscribe(_sub_handles.actuator_armed);
+	orb_unsubscribe(_sub_handles.vehicle_control_mode);
+	orb_unsubscribe(_sub_handles.vehicle_attitude);
+	orb_unsubscribe(_sub_handles.vehicle_attitude_setpoint);
+	orb_unsubscribe(_sub_handles.vehicle_rates_setpoint);
+	orb_unsubscribe(_sub_handles.manual_control_setpoint);
+}
+
 
 } // namespace singlerotor
