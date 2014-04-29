@@ -44,6 +44,7 @@
 #include <cxx/cstdio>
 #include <cxx/cstring>
 #include <systemlib/systemlib.h>
+#include <systemlib/getopt_long.h>
 #include <systemlib/err.h>
 #include <drivers/drv_hrt.h>
 #include <uORB/uORB.h>
@@ -51,7 +52,7 @@
 
 extern "C" __EXPORT int sr_tester_main(int argc, char *argv[]);
 
-int sr_tester_main(int argc, char *argv[])
+static void hwtest()
 {
 	struct actuator_controls_s actuators;
 	std::memset(&actuators, 0, sizeof(actuators));
@@ -75,6 +76,62 @@ int sr_tester_main(int argc, char *argv[])
 
 		warnx("servos set to %.1f", rcvalue);
 		rcvalue *= -1.0f;
+	}
+}
+
+static void passthru()
+{
+
+}
+
+static void usage()
+{
+	printf("Usage: sr_tester [options]\n\n");
+	printf("  -h, --help\tthis help\n");
+	printf("  -p, --passthru\tpasses RC transmitter input directly through to servos\n");
+	printf("      --hwtest\tsimilar to the built-in hw_test example\n");
+}
+
+int sr_tester_main(int argc, char *argv[])
+{
+	int opt;
+	int opt_idx = 0;
+	bool continue_parse = true;
+
+	static GETOPT_LONG_OPTION_T options[] = {
+		{"help", NO_ARG, NULL, 'h'},
+		{"passthru", NO_ARG, NULL, 'p'},
+		{"hwtest", NO_ARG, NULL, 'a'},
+		{NULL, NULL, NULL, NULL}
+	};
+
+	optind = 0; // Reset optind
+
+	while (continue_parse) {
+		opt = getopt_long(argc, argv, "ph", options, &opt_idx);
+
+		if (opt == EOF) {
+			break;
+		}
+
+		switch (opt) {
+		case 'p':
+			passthru();
+			continue_parse = false;
+			break;
+
+		case 'a':
+			hwtest();
+			continue_parse = false;
+			break;
+
+		case 'h':
+		case '?':
+		default:
+			usage();
+			continue_parse = false;
+			break;
+		}
 	}
 
 	return EXIT_SUCCESS;
