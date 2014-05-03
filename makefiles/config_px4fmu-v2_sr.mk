@@ -1,5 +1,5 @@
 #
-# Makefile for the px4fmu-v2_srtest configuration
+# Makefile for the px4fmu-v2_sr configuration
 #
 
 #
@@ -20,23 +20,26 @@ MODULES		+= drivers/px4fmu
 MODULES		+= drivers/px4io
 MODULES		+= drivers/boards/px4fmu-v2
 MODULES		+= drivers/rgbled
-MODULES		+= drivers/mpu6000
-MODULES		+= drivers/lsm303d
 MODULES		+= drivers/l3gd20
+MODULES		+= drivers/mpu6000
 MODULES		+= drivers/hmc5883
 MODULES		+= drivers/ms5611
+MODULES		+= drivers/lsm303d
 MODULES		+= drivers/gps
 MODULES		+= drivers/hil
 MODULES		+= drivers/blinkm
 MODULES		+= drivers/airspeed
+MODULES		+= drivers/ets_airspeed
+MODULES		+= drivers/meas_airspeed
+MODULES		+= drivers/frsky_telemetry
 MODULES		+= modules/sensors
-MODULES		+= drivers/mkblctrl
 
 #
 # System commands
 #
 MODULES		+= systemcmds/bl_update
 MODULES		+= systemcmds/boardinfo
+MODULES		+= systemcmds/i2c
 MODULES		+= systemcmds/mixer
 MODULES		+= systemcmds/param
 MODULES		+= systemcmds/perf
@@ -69,7 +72,6 @@ MODULES		+= modules/attitude_estimator_so3
 #
 # Vehicle Control
 #
-MODULES		+= modules/sr_tester
 MODULES		+= modules/sr_att_control
 
 #
@@ -96,6 +98,13 @@ MODULES		+= lib/ecl
 MODULES		+= lib/external_lgpl
 MODULES		+= lib/geo
 MODULES		+= lib/conversion
+
+#
+# Test
+#
+MODULES		+= modules/sr_tester
+MODULES 	+= modules/unit_test
+MODULES 	+= modules/commander/commander_tests
 
 #
 # Transitional support - add commands from the NuttX export archive.
