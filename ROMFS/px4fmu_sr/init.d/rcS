@@ -2,6 +2,8 @@
 #
 # PX4FMU startup script for singlerotor helicopter testing.
 #
+# Kim Lindberg Schwaner <kim.schwaner@gmail.com>
+#
 
 # Start uORB
 uorb start
@@ -13,19 +15,29 @@ then
 	nshterm /dev/ttyACM0 &
 fi
 
-#
 # Try to mount the microSD card.
-#
-echo "[init] looking for microSD..."
+echo "[init] Mounting microSD card..."
 if mount -t vfat /dev/mmcsd0 /fs/microsd
 then
-	echo "[init] card mounted at /fs/microsd"
+	echo "[init] Mounted succesfully at /fs/microsd"
 	# Start playing the startup tune
 	tone_alarm start
 else
-	echo "[init] no microSD card found"
+	echo "[init] No microSD card found"
 	# Play SOS
 	tone_alarm error
+fi
+
+# Start system state indicator
+if rgbled start
+then
+	echo "[init] Using external RGB Led"
+else
+	if blinkm start
+	then
+		echo "[init] Using blinkm"
+		blinkm systemstate
+	fi
 fi
 
 # Find IO board firmware
@@ -39,33 +51,61 @@ fi
 # Start PX4IO
 if px4io start
 then
-	echo "PX4IO OK"
+	px4io recovery
+
+	if hw_ver compare PX4FMU_V1
+	then
+		set PX4IO_LIMIT 200
+	else
+		set PX4IO_LIMIT 400
+	fi
+
+	px4io limit $PX4IO_LIMIT
+
+	echo "[init] PX4IO OK"
 fi
 
+# Compare against new IO firmware
 if px4io checkcrc $io_file
 then
-	echo "PX4IO CRC OK"
+	echo "[init] PX4IO firmware CRC check OK"
 else
-	echo "PX4IO CRC failure"
+	echo "[init] PX4IO firmware CRC check failure"
 	tone_alarm MBABGP
 	if px4io forceupdate 14662 $io_file
 	then
 		usleep 500000
 		if px4io start
 		then
-			echo "PX4IO restart OK"
+			echo "[init] PX4IO restart OK"
 			tone_alarm MSPAA
 		else
-			echo "PX4IO restart failed"
+			echo "[init] PX4IO restart failed"
 			tone_alarm MNGGG
 			sleep 5
 			reboot
 		fi
 	else
-		echo "PX4IO update failed"
+		echo "[init] PX4IO firmware update failed"
 		tone_alarm MNGGG
 	fi
 fi
+
+# Default fmu mode
+fmu mode_pwm
+
+# Load mixer
+mixer load /dev/pwm_output /etc/mixers/IO_pass.mix
+
+# MAV_TYPE value 4 is MAV_TYPE_HELICOPTER; a "Normal helicopter with tail rotor."
+set param MAV_TYPE 4
+
+# PWM
+set PWM_OUTPUTS 12345
+pwm rate -c $PWM_OUTPUTS -r 200
+pwm disarmed -c $PWM_OUTPUTS -p 0
+pwm min -c $PWM_OUTPUTS -p 1000
+pwm max -c $PWM_OUTPUTS -p 2000
 
 # Start the Commander
 commander start
@@ -80,27 +120,17 @@ dataman start
 navigator start
 
 # Start logging
-if [ -d /fs/microsd ]
-then
-	if hw_ver compare PX4FMU_V1
-	then
-		echo "Start sdlog2 at 50Hz"
-		sdlog2 start -r 50 -a -b 8 -t
-	else
-		echo "Start sdlog2 at 200Hz"
-		sdlog2 start -r 200 -a -b 16 -t
-	fi
-fi
+sh /etc/init.d/rc.logging
 
-# Sensors, Logging, GPS
+# Start sensors
 sh /etc/init.d/rc.sensors
 
 # Start GPS
-gps start
+#gps start
 
 # Estimators
-attitude_estimator_ekf start
-position_estimator_inav start
+#attitude_estimator_ekf start
+#position_estimator_inav start
 
 # Start singlerotor controller apps
-sr_att_control --start
+#sr_att_control --start
