@@ -43,6 +43,15 @@
 #ifndef SR_ATT_CONTROL_H
 #define SR_ATT_CONTROL_H
 
+#include <cxx/cstdio>
+#include <uORB/topics/actuator_armed.h>
+#include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_rates_setpoint.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/actuator_controls.h>
+
 namespace singlerotor
 {
 
@@ -56,6 +65,8 @@ public:
 	void stop();
 	bool is_running() const;
 
+	void print_info_screen(FILE *out);
+
 private:
 	void subscribe_all();
 	void unsubscribe_all();
@@ -64,6 +75,22 @@ private:
 	bool _is_running;
 	bool _should_stop;
 
+	struct params_t {
+		float roll_p;
+		float roll_rate_p;
+		float roll_rate_i;
+		float roll_rate_d;
+		float pitch_p;
+		float pitch_rate_p;
+		float pitch_rate_i;
+		float pitch_rate_d;
+		float yaw_p;
+		float yaw_rate_p;
+		float yaw_rate_i;
+		float yaw_rate_d;
+	} _params;
+
+	// uORB subscription handles
 	struct sub_handles_t {
 		int actuator_armed;
 		int vehicle_control_mode;
@@ -72,6 +99,16 @@ private:
 		int vehicle_rates_setpoint;
 		int manual_control_setpoint;
 	} _sub_handles;
+
+	// uORB topic data structures
+	struct actuator_armed_s                 _actuator_armed;
+	struct vehicle_control_mode_s           _vehicle_control_mode;
+	struct vehicle_attitude_s               _vehicle_attitude;
+	struct vehicle_attitude_setpoint_s      _vehicle_attitude_setpoint;
+	struct vehicle_rates_setpoint_s         _vehicle_rates_setpoint;
+	struct manual_control_setpoint_s        _manual_control_setpoint;
+	struct actuator_controls_s              _actuator_controls;
+
 };
 
 } // namespace singlerotor

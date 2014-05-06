@@ -40,7 +40,10 @@
  * @author Thomas Larsen <thola11@student.sdu.dk>
  */
 
+#include <cxx/cstdio>
 #include <unistd.h>
+#include <systemlib/err.h>
+#include <systemlib/perf_counter.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/vehicle_control_mode.h>
@@ -48,8 +51,6 @@
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/manual_control_setpoint.h>
-//#include <systemlib/pid/pid.h>// ?
-#include <systemlib/err.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
@@ -69,7 +70,9 @@ int AttitudeController::run(int argc, char *argv[])
 	_should_stop = false;
 	subscribe_all();
 
+	// Main loop
 	while (!_should_stop) {
+		orb_copy(ORB_ID(vehicle_attitude), _sub_handles.vehicle_attitude, &_vehicle_attitude);
 		sleep(1);
 	}
 
@@ -86,6 +89,24 @@ void AttitudeController::stop()
 bool AttitudeController::is_running() const
 {
 	return _is_running;
+}
+
+void AttitudeController::print_info_screen(FILE *out)
+{
+	const char *CL = "\033[K"; // clear line
+
+	fprintf(out, "\033[2J"); // clear screen
+	fprintf(out, "\033[H"); // move cursor home
+	fprintf(out, "%stime: %lld\n", CL, _vehicle_attitude.timestamp);
+	fprintf(out, "%sroll: %f\n", CL, _vehicle_attitude.roll);
+	fprintf(out, "%spitch: %f\n", CL, _vehicle_attitude.pitch);
+	fprintf(out, "%syaw: %f\n", CL, _vehicle_attitude.yaw);
+	fprintf(out, "%srollspeed: %f\n", CL, _vehicle_attitude.rollspeed);
+	fprintf(out, "%spitchspeed: %f\n", CL, _vehicle_attitude.pitchspeed);
+	fprintf(out, "%syawspeed: %f\n", CL, _vehicle_attitude.yawspeed);
+	fprintf(out, "%srollacc: %f\n", CL, _vehicle_attitude.rollacc);
+	fprintf(out, "%spitchacc: %f\n", CL, _vehicle_attitude.pitchacc);
+	fprintf(out, "%syawacc: %f\n", CL, _vehicle_attitude.yawacc);
 }
 
 void AttitudeController::subscribe_all()

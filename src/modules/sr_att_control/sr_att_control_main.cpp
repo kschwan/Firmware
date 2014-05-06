@@ -42,6 +42,9 @@
 
 #include <cxx/cstdlib>
 #include <cxx/cstdio>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <systemlib/systemlib.h>
 #include <systemlib/getopt_long.h>
 #include "sr_att_control.h"
@@ -101,16 +104,73 @@ static int att_control_start()
 			      nullptr);
 }
 
+static void info_screen(const char *path)
+{
+	FILE *out;
+	int fd = -1;
+
+	if (path) {
+		int fd = open(path, O_WRONLY);
+
+		if (fd < 0) {
+			printf("error opening %s\n", path);
+			return;
+		}
+
+		out = fdopen(fd, "w");
+		printf("opening infoscreen on %s\n", path);
+	} else {
+		out = stdout;
+		printf("opening infoscreen on stdout\n");
+	}
+
+	char c;
+	struct pollfd fds;
+	int ret;
+
+	for (;;) {
+		att_control->print_info_screen(out);
+
+		// Sleep waiting for user input (to cancel the loop)
+		for (int k = 0; k < 5; k++) {
+			fds.fd = 0; /* stdin */
+			fds.events = POLLIN;
+			ret = poll(&fds, 1, 0);
+
+			if (ret > 0) {
+				read(0, &c, 1);
+
+				switch (c) {
+				case 0x03: // ctrl-c
+				case 0x1b: // esc
+				case 'c':
+				case 'q':
+					return;
+				}
+			}
+
+			usleep(200000);
+		}
+
+		sleep(1);
+	}
+
+	if (fd < 0) {
+		close(fd);
+	}
+}
+
 /**
  * Print the usage help.
  */
 static void usage()
 {
-	printf("Usage: sr_att_control [options]\n\n");
-	printf("  -h, --help\tthis help\n");
-	printf("      --start\tstarts the daemon\n");
-	printf("      --stop\tstops the daemon\n");
-	printf("  -s, --status\tshow status\n");
+	printf("%s", "Usage: sr_att_control [option]...\n\n");
+	printf("%-30s%-s\n", "  -h, --help", "this help");
+	printf("%-30s%-s\n", "      --start", "starts the daemon");
+	printf("%-30s%-s\n", "  -i, --infoscreen=DEVICE", "show information screen on DEVICE");
+	printf("%-30s%-s\n", "      --stop", "stops the daemon");
+	printf("%-30s%-s\n", "  -s, --status", "show status");
 }
 
 int sr_att_control_main(int argc, char *argv[])
@@ -120,11 +180,12 @@ int sr_att_control_main(int argc, char *argv[])
 	bool continue_parse = true;
 
 	static GETOPT_LONG_OPTION_T options[] = {
-		{"start", NO_ARG, NULL, 'a'},
-		{"stop", NO_ARG, NULL, 'b'},
-		{"status", NO_ARG, NULL, 's'},
-		{"help", NO_ARG, NULL, 'h'},
-		{NULL, NULL, NULL, NULL}
+		{"start", NO_ARG, 0, 'a'},
+		{"stop", NO_ARG, 0, 'b'},
+		{"status", NO_ARG, 0, 's'},
+		{"infoscreen", OPTIONAL_ARG, 0, 'i'},
+		{"help", NO_ARG, 0, 'h'},
+		{0, 0, 0, 0}
 	};
 
 	optind = 0; // Reset optind
@@ -181,6 +242,17 @@ int sr_att_control_main(int argc, char *argv[])
 				printf("stopped\n");
 			} else {
 				printf("running\n");
+			}
+
+			continue_parse = false;
+			break;
+
+		case 'i':
+
+			if (att_control->is_running()) {
+				info_screen(optarg);
+			} else {
+				printf("not running\n");
 			}
 
 			continue_parse = false;
