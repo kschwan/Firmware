@@ -91,18 +91,15 @@ else
 	fi
 fi
 
-# Default fmu mode
-fmu mode_pwm
-
 # Load mixer
 mixer load /dev/pwm_output /etc/mixers/IO_pass.mix
 
 # MAV_TYPE value 4 is MAV_TYPE_HELICOPTER; a "Normal helicopter with tail rotor."
-set param MAV_TYPE 4
+param set MAV_TYPE 4
 
 # PWM
 set PWM_OUTPUTS 12345
-pwm rate -c $PWM_OUTPUTS -r 200
+pwm rate -a -r 200
 pwm disarmed -c $PWM_OUTPUTS -p 0
 pwm min -c $PWM_OUTPUTS -p 1000
 pwm max -c $PWM_OUTPUTS -p 2000
@@ -126,11 +123,11 @@ sh /etc/init.d/rc.logging
 sh /etc/init.d/rc.sensors
 
 # Start GPS
-#gps start
+gps start
 
 # Estimators
-#attitude_estimator_ekf start
-#position_estimator_inav start
+attitude_estimator_ekf start
+position_estimator_inav start
 
 # Start singlerotor controller apps
-#sr_att_control --start
+sr_att_control --start
