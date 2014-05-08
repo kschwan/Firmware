@@ -83,7 +83,6 @@ MODULES		+= modules/mc_att_control
 MODULES		+= modules/mc_pos_control
 #MODULES		+= examples/flow_position_control
 #MODULES		+= examples/flow_speed_control
-MODULES		+= modules/sr_att_control
 
 #
 # Logging
