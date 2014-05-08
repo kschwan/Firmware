@@ -51,7 +51,7 @@ MODULES		+= systemcmds/tests
 MODULES		+= systemcmds/config
 MODULES		+= systemcmds/nshterm
 MODULES		+= systemcmds/mtd
-MODULES		+= systemcmds/hw_ver
+MODULES		+= systemcmds/ver
 MODULES		+= systemcmds/dumpfile
 
 #
