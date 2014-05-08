@@ -81,6 +81,7 @@ MODULES		+= modules/fw_pos_control_l1
 MODULES		+= modules/fw_att_control
 MODULES		+= modules/mc_att_control
 MODULES		+= modules/mc_pos_control
+MODULES		+= modules/sr_att_control
 #MODULES		+= examples/flow_position_control
 #MODULES		+= examples/flow_speed_control
 
@@ -94,6 +95,7 @@ MODULES		+= modules/sdlog2
 #
 #MODULES 	+= modules/unit_test
 #MODULES 	+= modules/commander/commander_tests
+MODULES		+= modules/sr_tester
 
 #
 # Library modules
