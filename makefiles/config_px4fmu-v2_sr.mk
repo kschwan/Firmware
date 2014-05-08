@@ -39,7 +39,6 @@ MODULES		+= modules/sensors
 #
 MODULES		+= systemcmds/bl_update
 MODULES		+= systemcmds/boardinfo
-MODULES		+= systemcmds/i2c
 MODULES		+= systemcmds/mixer
 MODULES		+= systemcmds/param
 MODULES		+= systemcmds/perf
