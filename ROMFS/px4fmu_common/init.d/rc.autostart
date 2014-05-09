@@ -74,6 +74,11 @@ then
         set MODE custom
 fi
 
+if param compare SYS_AUTOSTART 2999
+then
+        sh /etc/init.d/2999_raptor50t
+fi
+
 #
 # Flying wing
 #

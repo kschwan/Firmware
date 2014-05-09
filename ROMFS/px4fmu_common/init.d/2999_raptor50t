@@ -1,0 +1,26 @@
+#!nsh
+#
+# Raptor 50T Single Rotor Helicopter
+#
+
+echo "[init] 2999_raptor50t: Raptor 50T Single Rotor Helicopter"
+
+set VEHICLE_TYPE sr
+
+set PWM_OUTPUTS 12345678
+set PWM_RATE 100
+set PWM_DISARMED 0
+set PWM_MIN 1200
+set PWM_MAX 1800
+
+#
+# Load default params for this platform
+#
+# if [ $DO_AUTOCONFIG == yes ]
+# then
+#     param set xxx
+# fi
+
+# MAV_TYPE value 4 is MAV_TYPE_HELICOPTER; a "Normal helicopter with tail rotor."
+set MAV_TYPE 4
+set MIXER IO_pass
