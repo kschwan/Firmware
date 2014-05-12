@@ -28,6 +28,21 @@ else
 	tone_alarm error
 fi
 
+# Load parameters
+set PARAM_FILE /fs/microsd/params
+if mtd start
+then
+	set PARAM_FILE /fs/mtd_params
+fi
+
+param select $PARAM_FILE
+if param load
+then
+	echo "[init] Params loaded: $PARAM_FILE"
+else
+	echo "[init] ERROR: Params loading failed: $PARAM_FILE"
+fi
+
 # Start system state indicator
 if rgbled start
 then
