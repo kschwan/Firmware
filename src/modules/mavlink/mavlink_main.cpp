@@ -727,9 +727,9 @@ int Mavlink::mavlink_pm_send_param(param_t param)
 	if (param == PARAM_INVALID) { return 1; }
 
 	/* buffers for param transmission */
-	static char name_buf[MAVLINK_MSG_PARAM_VALUE_FIELD_PARAM_ID_LEN];
+	char name_buf[MAVLINK_MSG_PARAM_VALUE_FIELD_PARAM_ID_LEN];
 	float val_buf;
-	static mavlink_message_t tx_msg;
+	mavlink_message_t tx_msg;
 
 	/* query parameter type */
 	param_type_t type = param_type(param);
@@ -1523,6 +1523,8 @@ void Mavlink::mavlink_wpm_message_handler(const mavlink_message_t *msg)
 void
 Mavlink::mavlink_missionlib_send_message(mavlink_message_t *msg)
 {
+	uint8_t missionlib_msg_buf[MAVLINK_MAX_PACKET_LEN];
+
 	uint16_t len = mavlink_msg_to_send_buffer(missionlib_msg_buf, msg);
 
 	mavlink_send_uart_bytes(_channel, missionlib_msg_buf, len);
@@ -2193,7 +2195,7 @@ Mavlink::start(int argc, char *argv[])
 	task_spawn_cmd(buf,
 		       SCHED_DEFAULT,
 		       SCHED_PRIORITY_DEFAULT,
-		       2048,
+		       2000,
 		       (main_t)&Mavlink::start_helper,
 		       (const char **)argv);
 

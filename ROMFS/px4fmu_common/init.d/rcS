@@ -11,7 +11,7 @@ set RC_FILE /fs/microsd/etc/rc.txt
 set CONFIG_FILE /fs/microsd/etc/config.txt
 set EXTRAS_FILE /fs/microsd/etc/extras.txt
 
-set TUNE_OUT_ERROR "ML<<CP4CP4CP4CP4CP4"
+set TUNE_OUT_ERROR ML<<CP4CP4CP4CP4CP4
 
 #
 # Try to mount the microSD card.
@@ -420,16 +420,6 @@ then
 	mavlink start $MAVLINK_FLAGS
 
 	#
-	# Start the datamanager
-	#
-	dataman start
-
-	#
-	# Start the navigator
-	#
-	navigator start
-
-	#
 	# Sensors, Logging, GPS
 	#
 	sh /etc/init.d/rc.sensors
@@ -579,6 +569,16 @@ then
 			sh /etc/init.d/rc.sr_apps
 		fi
 	fi
+
+	#
+	# Start the datamanager
+	#
+	dataman start
+
+	#
+	# Start the navigator
+	#
+	navigator start
 
 	#
 	# Generic setup (autostart ID not found)
