@@ -1,8 +1,7 @@
 /****************************************************************************
  *
  *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
- *   Author: Kim Lindberg Schwaner <kschw10@student.sdu.dk>
- *           Thomas Larsen <thola11@student.sdu.dk>
+ *   Author: Kim Lindberg Schwaner <kim.schwaner@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,13 +35,19 @@
 /**
  * @file sr_att_control.cpp
  *
- * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
- * @author Thomas Larsen <thola11@student.sdu.dk>
+ * @author Kim Lindberg Schwaner <kim.schwaner@gmail.com>
+ *
+ * @todo Use uORB cpp wrappers
  */
 
-#include <cxx/cstdio>
+#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <poll.h>
+#include <errno.h>
+#include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
+#include <systemlib/param/param.h>
 #include <systemlib/perf_counter.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_armed.h>
@@ -51,6 +56,8 @@
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/parameter_update.h>
+#include <uORB/topics/actuator_controls.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
@@ -58,6 +65,18 @@ namespace singlerotor
 
 AttitudeController::AttitudeController()
 {
+	_param_handles.roll_p = param_find("SR_ROLL_P");
+	_param_handles.roll_rate_p = param_find("SR_ROLLRATE_P");
+	_param_handles.roll_rate_i = param_find("SR_ROLLRATE_I");
+	_param_handles.roll_rate_d = param_find("SR_ROLLRATE_D");
+	_param_handles.pitch_p = param_find("SR_PITCH_P");
+	_param_handles.pitch_rate_p = param_find("SR_PITCHRATE_P");
+	_param_handles.pitch_rate_i = param_find("SR_PITCHRATE_I");
+	_param_handles.pitch_rate_d = param_find("SR_PITCHRATE_D");
+	_param_handles.yaw_p = param_find("SR_YAW_P");
+	_param_handles.yaw_rate_p = param_find("SR_YAWRATE_P");
+	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
+	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
 }
 
 AttitudeController::~AttitudeController()
@@ -68,17 +87,53 @@ int AttitudeController::run(int argc, char *argv[])
 {
 	_is_running = true;
 	_should_stop = false;
+	_control_loop_perf = perf_alloc(PC_ELAPSED, "sr_att_control_loop");
 	subscribe_all();
+	advertise_open_all();
+	params_update();
 
-	// Main loop
+	// Wake up on attitude or control parameter updates. We don't care about
+	// returned events.
+	struct pollfd fds[2];
+	fds[0].fd = _sub_handles.parameter_update;
+	fds[0].events = POLLIN;
+	fds[1].fd = _sub_handles.vehicle_attitude;
+	fds[1].events = POLLIN;
+
+	// This is the main loop of the task.
 	while (!_should_stop) {
-		orb_copy(ORB_ID(vehicle_attitude), _sub_handles.vehicle_attitude, &_vehicle_attitude);
-		sleep(1);
+		// Wait for event on file descriptors.
+		int ret = poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 500);
+
+		if (ret < 0) {
+			// Error.
+			warn("AttitudeController: poll error %d, %d", ret, errno);
+			continue;
+		} else if (ret == 0) {
+			// Timeout.
+			continue;
+		}
+
+		// If parameters were updated we clear the parameter_update topic
+		// updated flag and then update the local parameter cache.
+		if (fds[0].revents & POLLIN) {
+			orb_copy(ORB_ID(parameter_update), _sub_handles.parameter_update, &_parameter_update);
+			params_update();
+		}
+
+		// If vehicle attitude has changed, we run the control loop with
+		// the updates values.
+		if (fds[1].revents & POLLIN) {
+			control_main();
+		}
 	}
 
+	// Clean-up and exit
+	advertise_close_all();
 	unsubscribe_all();
+	perf_free(_control_loop_perf);
 	_is_running = false;
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 void AttitudeController::stop()
@@ -91,7 +146,7 @@ bool AttitudeController::is_running() const
 	return _is_running;
 }
 
-void AttitudeController::print_info_screen(FILE *out)
+void AttitudeController::print_info_screen(FILE *out) const
 {
 	const char *CL = "\033[K"; // clear line
 
@@ -129,5 +184,181 @@ void AttitudeController::unsubscribe_all()
 	orb_unsubscribe(_sub_handles.manual_control_setpoint);
 }
 
+void AttitudeController::advertise_open_all()
+{
+	_pub_handles.actuator_controls_0 = orb_advertise(ORB_ID(actuator_controls_0), &_actuator_controls_0);
+	_pub_handles.vehicle_rates_setpoint = orb_advertise(ORB_ID(vehicle_rates_setpoint), &_vehicle_rates_setpoint);
+}
+
+void AttitudeController::advertise_close_all()
+{
+	close(_pub_handles.actuator_controls_0);
+	close(_pub_handles.vehicle_rates_setpoint);
+}
+
+void AttitudeController::get_orb_updates()
+{
+	bool updated;
+
+	orb_check(_sub_handles.actuator_armed, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_attitude), _sub_handles.vehicle_attitude, &_vehicle_attitude);
+	}
+
+	orb_check(_sub_handles.vehicle_control_mode, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_control_mode), _sub_handles.vehicle_control_mode, &_vehicle_control_mode);
+	}
+
+	orb_check(_sub_handles.vehicle_attitude, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_attitude), _sub_handles.vehicle_attitude, &_vehicle_attitude);
+	}
+
+	orb_check(_sub_handles.vehicle_attitude_setpoint, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_attitude_setpoint), _sub_handles.vehicle_attitude_setpoint, &_vehicle_attitude_setpoint);
+	}
+
+	orb_check(_sub_handles.vehicle_rates_setpoint, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_rates_setpoint), _sub_handles.vehicle_rates_setpoint, &_vehicle_rates_setpoint);
+	}
+
+	orb_check(_sub_handles.manual_control_setpoint, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(manual_control_setpoint), _sub_handles.manual_control_setpoint, &_manual_control_setpoint);
+	}
+}
+
+void AttitudeController::params_update()
+{
+	param_get(_param_handles.roll_p, &_control_params.att_p(0));
+	param_get(_param_handles.roll_rate_p, &_control_params.rate_p(0));
+	param_get(_param_handles.roll_rate_i, &_control_params.rate_i(0));
+	param_get(_param_handles.roll_rate_d, &_control_params.rate_d(0));
+	param_get(_param_handles.pitch_p, &_control_params.att_p(1));
+	param_get(_param_handles.pitch_rate_p, &_control_params.rate_p(1));
+	param_get(_param_handles.pitch_rate_i, &_control_params.rate_i(1));
+	param_get(_param_handles.pitch_rate_d, &_control_params.rate_d(1));
+	param_get(_param_handles.yaw_p, &_control_params.att_p(2));
+	param_get(_param_handles.yaw_rate_p, &_control_params.rate_p(2));
+	param_get(_param_handles.yaw_rate_i, &_control_params.rate_i(2));
+	param_get(_param_handles.yaw_rate_d, &_control_params.rate_d(2));
+}
+
+void AttitudeController::control_main()
+{
+	perf_begin(_control_loop_perf);
+
+	// Update from all subscribed topics which have new data.
+	get_orb_updates();
+
+	// Time since last run hrt_absolute_time() returns time in microseconds
+	float dt = (hrt_absolute_time() - _control_last_run) / 1000000.0f;
+	_control_last_run = hrt_absolute_time();
+
+	// Clamp dt's
+	if (dt < 0.002f) {
+		dt = 0.002f;
+	} else if (dt > 0.02f) {
+		dt = 0.02f;
+	}
+
+	if (_vehicle_control_mode.flag_control_attitude_enabled) {
+		// Attitude stabilization is active: Run attitude control loop.
+		control_attitude();
+		_vehicle_rates_setpoint.timestamp = hrt_absolute_time();
+		orb_publish(ORB_ID(vehicle_rates_setpoint), _pub_handles.vehicle_rates_setpoint, &_vehicle_rates_setpoint);
+	} else {
+		// Attitude stabilization deactivated. We try to get the
+		// vehicle_rates_setpoint from elsewhere.
+
+		// TODO
+	}
+
+	if (_vehicle_control_mode.flag_control_rates_enabled) {
+		// Angular rate stabilization is active: Run rate control loop.
+		control_rates(dt); // this sets _actuator_controls_0 values
+	}
+
+	// MANUAL ?
+	if (_vehicle_control_mode.flag_control_manual_enabled) {
+		// Manual control input pass-through
+		_actuator_controls_0.control[0] = _manual_control_setpoint.roll;
+		_actuator_controls_0.control[1] = _manual_control_setpoint.pitch;
+		_actuator_controls_0.control[2] = _manual_control_setpoint.yaw;
+		_actuator_controls_0.control[3] = _manual_control_setpoint.throttle;
+		_actuator_controls_0.control[4] = _manual_control_setpoint.aux1;
+		_actuator_controls_0.control[5] = _manual_control_setpoint.aux2;
+		_actuator_controls_0.control[6] = _manual_control_setpoint.aux3;
+		_actuator_controls_0.control[7] = _manual_control_setpoint.aux4;
+	}
+
+	// Timestamp and publish
+	_actuator_controls_0.timestamp = hrt_absolute_time();
+	orb_publish(ORB_ID(actuator_controls_0), _pub_handles.actuator_controls_0, &_actuator_controls_0);
+
+	perf_end(_control_loop_perf);
+}
+
+void AttitudeController::control_attitude()
+{
+	float e_roll = _vehicle_attitude_setpoint.roll_body - _vehicle_attitude.roll;
+	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
+	float e_yaw = _vehicle_attitude_setpoint.yaw_body - _vehicle_attitude.yaw;
+
+	_vehicle_rates_setpoint.roll = e_roll * _control_params.att_p(0);
+	_vehicle_rates_setpoint.pitch = e_pitch * _control_params.att_p(1);
+	_vehicle_rates_setpoint.yaw = e_yaw * _control_params.att_p(2);
+
+	// Published upon return
+}
+
+void AttitudeController::control_rates(float dt)
+{
+	// If disarmed, reset integral
+	if (!_actuator_armed.armed) {
+		_i_roll = 0.0;
+		_i_pitch = 0.0;
+		_i_yaw = 0.0;
+	}
+
+	float e_rollrate = _vehicle_rates_setpoint.roll - _vehicle_attitude.rollspeed;
+	float e_pitchrate = _vehicle_rates_setpoint.pitch - _vehicle_attitude.pitchspeed;
+	float e_yawrate = _vehicle_rates_setpoint.yaw - _vehicle_attitude.yawspeed;
+
+	float p_roll = e_rollrate * _control_params.rate_p(0);
+	float p_pitch = e_pitchrate * _control_params.rate_p(1);
+	float p_yaw = e_yawrate * _control_params.rate_p(2);
+
+	float i_roll = _i_roll + e_rollrate * dt * _control_params.rate_i(0);
+	float i_pitch = _i_pitch + e_pitchrate * dt * _control_params.rate_i(1);
+	float i_yaw = _i_yaw + e_yawrate * dt * _control_params.rate_i(2);
+
+	// Windup guard
+
+
+	float d_roll = (e_rollrate - _e_rollrate_prev) / dt * _control_params.rate_d(0);
+	float d_pitch = (e_pitchrate - _e_pitchrate_prev) / dt * _control_params.rate_d(1);
+	float d_yaw = (e_yawrate - _e_yawrate_prev) / dt * _control_params.rate_d(2);
+
+	_e_rollrate_prev = e_rollrate;
+	_e_pitchrate_prev = e_pitchrate;
+	_e_yawrate_prev = e_yawrate;
+
+	_actuator_controls_0.control[0] = p_roll + i_roll + d_roll;
+	_actuator_controls_0.control[1] = p_pitch + i_pitch + d_pitch;
+	_actuator_controls_0.control[2] = p_yaw + i_yaw + d_yaw;
+	_actuator_controls_0.control[3] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
+
+	// Published upon return
+}
 
 } // namespace singlerotor

@@ -1,8 +1,7 @@
 /****************************************************************************
  *
  *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
- *   Author: Kim Lindberg Schwaner <kschw10@student.sdu.dk>
- *           Thomas Larsen <thola11@student.sdu.dk>
+ *   Author: Kim Lindberg Schwaner <kim.schwaner@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,12 +35,11 @@
 /**
  * @file sr_att_control_main.cpp
  *
- * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
- * @author Thomas Larsen <thola11@student.sdu.dk>
+ * @author Kim Lindberg Schwaner <kim.schwaner@gmail.com>
  */
 
-#include <cxx/cstdlib>
-#include <cxx/cstdio>
+#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -110,7 +108,7 @@ static void info_screen(const char *path)
 	int fd = -1;
 
 	if (path) {
-		int fd = open(path, O_WRONLY);
+		fd = open(path, O_WRONLY);
 
 		if (fd < 0) {
 			printf("error opening %s\n", path);
@@ -123,6 +121,8 @@ static void info_screen(const char *path)
 		out = stdout;
 		printf("opening infoscreen on stdout\n");
 	}
+
+	fflush(out);
 
 	char c;
 	struct pollfd fds;
