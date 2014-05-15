@@ -152,7 +152,10 @@ void AttitudeController::print_info_screen(FILE *out) const
 
 	fprintf(out, "\033[2J"); // clear screen
 	fprintf(out, "\033[H"); // move cursor home
-	fprintf(out, "%stime: %lld\n", CL, _vehicle_attitude.timestamp);
+
+	fprintf(out, "%slast control update: %lld\n\n", CL, _control_last_run);
+
+	fprintf(out, "%sattitude time: %lld\n", CL, _vehicle_attitude.timestamp);
 	fprintf(out, "%sroll: %f\n", CL, _vehicle_attitude.roll);
 	fprintf(out, "%spitch: %f\n", CL, _vehicle_attitude.pitch);
 	fprintf(out, "%syaw: %f\n", CL, _vehicle_attitude.yaw);
@@ -161,7 +164,36 @@ void AttitudeController::print_info_screen(FILE *out) const
 	fprintf(out, "%syawspeed: %f\n", CL, _vehicle_attitude.yawspeed);
 	fprintf(out, "%srollacc: %f\n", CL, _vehicle_attitude.rollacc);
 	fprintf(out, "%spitchacc: %f\n", CL, _vehicle_attitude.pitchacc);
-	fprintf(out, "%syawacc: %f\n", CL, _vehicle_attitude.yawacc);
+	fprintf(out, "%syawacc: %f\n\n", CL, _vehicle_attitude.yawacc);
+
+	fprintf(out, "%smanual x: %f\n", CL, _manual_control_setpoint.x);
+	fprintf(out, "%smanual y: %f\n", CL, _manual_control_setpoint.y);
+	fprintf(out, "%smanual z: %f\n", CL, _manual_control_setpoint.z);
+	fprintf(out, "%smanual r: %f\n\n", CL, _manual_control_setpoint.r);
+
+	if (_vehicle_control_mode.flag_control_manual_enabled) {
+		fprintf(out, "%sflag_control_manual_enabled: %s\n", CL, "true");
+	} else {
+		fprintf(out, "%sflag_control_manual_enabled: %s\n", CL, "false");
+	}
+
+	if (_vehicle_control_mode.flag_control_auto_enabled) {
+		fprintf(out, "%sflag_control_auto_enabled: %s\n", CL, "true");
+	} else {
+		fprintf(out, "%sflag_control_auto_enabled: %s\n", CL, "false");
+	}
+
+	if (_vehicle_control_mode.flag_control_rates_enabled) {
+		fprintf(out, "%sflag_control_rates_enabled: %s\n", CL, "true");
+	} else {
+		fprintf(out, "%sflag_control_rates_enabled: %s\n", CL, "false");
+	}
+
+	if (_vehicle_control_mode.flag_control_attitude_enabled) {
+		fprintf(out, "%sflag_control_attitude_enabled: %s\n", CL, "true");
+	} else {
+		fprintf(out, "%sflag_control_attitude_enabled: %s\n", CL, "false");
+	}
 }
 
 void AttitudeController::subscribe_all()
@@ -172,6 +204,7 @@ void AttitudeController::subscribe_all()
 	_sub_handles.vehicle_attitude_setpoint = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
 	_sub_handles.vehicle_rates_setpoint = orb_subscribe(ORB_ID(vehicle_rates_setpoint));
 	_sub_handles.manual_control_setpoint = orb_subscribe(ORB_ID(manual_control_setpoint));
+	_sub_handles.parameter_update = orb_subscribe(ORB_ID(parameter_update));
 }
 
 void AttitudeController::unsubscribe_all()
@@ -182,6 +215,7 @@ void AttitudeController::unsubscribe_all()
 	orb_unsubscribe(_sub_handles.vehicle_attitude_setpoint);
 	orb_unsubscribe(_sub_handles.vehicle_rates_setpoint);
 	orb_unsubscribe(_sub_handles.manual_control_setpoint);
+	orb_unsubscribe(_sub_handles.parameter_update);
 }
 
 void AttitudeController::advertise_open_all()
@@ -291,10 +325,10 @@ void AttitudeController::control_main()
 	// MANUAL ?
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 		// Manual control input pass-through
-		_actuator_controls_0.control[0] = _manual_control_setpoint.roll;
-		_actuator_controls_0.control[1] = _manual_control_setpoint.pitch;
-		_actuator_controls_0.control[2] = _manual_control_setpoint.yaw;
-		_actuator_controls_0.control[3] = _manual_control_setpoint.throttle;
+		_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
+		_actuator_controls_0.control[1] = _manual_control_setpoint.x; // roll
+		_actuator_controls_0.control[2] = _manual_control_setpoint.r; // yaw
+		_actuator_controls_0.control[3] = _manual_control_setpoint.z; // throttle
 		_actuator_controls_0.control[4] = _manual_control_setpoint.aux1;
 		_actuator_controls_0.control[5] = _manual_control_setpoint.aux2;
 		_actuator_controls_0.control[6] = _manual_control_setpoint.aux3;
