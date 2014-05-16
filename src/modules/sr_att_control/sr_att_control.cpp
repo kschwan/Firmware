@@ -377,10 +377,10 @@ void AttitudeController::control_rates(float dt)
 	_e_pitchrate_prev = e_pitchrate;
 	_e_yawrate_prev = e_yawrate;
 
-	_actuator_controls_0.control[0] = p_roll + i_roll + d_roll;
-	_actuator_controls_0.control[1] = p_pitch + i_pitch + d_pitch;
-	_actuator_controls_0.control[2] = p_yaw + i_yaw + d_yaw;
-	_actuator_controls_0.control[3] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
+	_actuator_controls_0.control[0] = p_pitch + i_pitch + d_pitch;
+	_actuator_controls_0.control[1] = p_roll + i_roll + d_roll;
+	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
+	_actuator_controls_0.control[3] = p_yaw + i_yaw + d_yaw;
 
 	// Published upon return
 }
