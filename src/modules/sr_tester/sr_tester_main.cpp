@@ -49,6 +49,7 @@
 #include <drivers/drv_hrt.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/vehicle_status.h>
 
 extern "C" __EXPORT int sr_tester_main(int argc, char *argv[]);
 
@@ -60,10 +61,11 @@ static void hwtest()
 	orb_advert_t actuator_pub_fd = orb_advertise(ORB_ID(actuator_controls_0), &actuators);
 
 	int i;
+	int count = 0;
 	float rcvalue = -1.0f;
 	hrt_abstime stime;
 
-	while (true) {
+	while (count < 3) {
 		stime = hrt_absolute_time();
 
 		while (hrt_absolute_time() - stime < 1000000) {
@@ -76,19 +78,31 @@ static void hwtest()
 
 		warnx("servos set to %.1f", rcvalue);
 		rcvalue *= -1.0f;
+		count++;
 	}
 }
 
-static void passthru()
+static void vstat()
 {
+	struct vehicle_status_s status;
+	int status_handle = orb_subscribe(ORB_ID(vehicle_status));
+	orb_copy(ORB_ID(vehicle_status), status_handle, &status);
 
+	printf("condition_system_sensors_initialized: %s\n", status.condition_system_sensors_initialized ? "true" : "false");
+	printf("condition_global_position_valid: %s\n", status.condition_global_position_valid ? "true" : "false");
+	printf("condition_home_position_valid: %s\n", status.condition_home_position_valid ? "true" : "false");
+	printf("condition_local_position_valid: %s\n", status.condition_local_position_valid ? "true" : "false");
+	printf("condition_local_altitude_valid: %s\n", status.condition_local_altitude_valid ? "true" : "false");
+	printf("condition_landed: %s\n", status.condition_landed ? "true" : "false");
+
+	orb_unsubscribe(status_handle);
 }
 
 static void usage()
 {
 	printf("Usage: sr_tester [options]\n\n");
 	printf("  -h, --help\tthis help\n");
-	printf("  -p, --passthru\tpasses RC transmitter input directly through to servos\n");
+	printf("  -p, --vstat\tvehicle status\n");
 	printf("      --hwtest\tsimilar to the built-in hw_test example\n");
 }
 
@@ -100,7 +114,7 @@ int sr_tester_main(int argc, char *argv[])
 
 	static GETOPT_LONG_OPTION_T options[] = {
 		{"help", NO_ARG, NULL, 'h'},
-		{"passthru", NO_ARG, NULL, 'p'},
+		{"vstat", NO_ARG, NULL, 'v'},
 		{"hwtest", NO_ARG, NULL, 'a'},
 		{NULL, NULL, NULL, NULL}
 	};
@@ -108,15 +122,15 @@ int sr_tester_main(int argc, char *argv[])
 	optind = 0; // Reset optind
 
 	while (continue_parse) {
-		opt = getopt_long(argc, argv, "ph", options, &opt_idx);
+		opt = getopt_long(argc, argv, "hv", options, &opt_idx);
 
 		if (opt == EOF) {
 			break;
 		}
 
 		switch (opt) {
-		case 'p':
-			passthru();
+		case 'v':
+			vstat();
 			continue_parse = false;
 			break;
 
