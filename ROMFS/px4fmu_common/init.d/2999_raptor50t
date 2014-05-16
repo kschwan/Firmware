@@ -8,7 +8,6 @@ echo "[init] 2999_raptor50t: Raptor 50T Single Rotor Helicopter"
 set VEHICLE_TYPE sr
 
 set PWM_OUTPUTS 12345678
-set PWM_RATE 100
 set PWM_DISARMED 0
 set PWM_MIN 1200
 set PWM_MAX 1800
