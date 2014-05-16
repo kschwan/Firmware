@@ -153,7 +153,7 @@ void AttitudeController::print_info_screen(FILE *out) const
 	fprintf(out, "\033[2J"); // clear screen
 	fprintf(out, "\033[H"); // move cursor home
 
-	fprintf(out, "%slast control update: %lld\n\n", CL, _control_last_run);
+	fprintf(out, "%slast control update: %lld\n", CL, _control_last_run);
 
 	fprintf(out, "%sattitude time: %lld\n", CL, _vehicle_attitude.timestamp);
 	fprintf(out, "%sroll: %f\n", CL, _vehicle_attitude.roll);
@@ -164,35 +164,25 @@ void AttitudeController::print_info_screen(FILE *out) const
 	fprintf(out, "%syawspeed: %f\n", CL, _vehicle_attitude.yawspeed);
 	fprintf(out, "%srollacc: %f\n", CL, _vehicle_attitude.rollacc);
 	fprintf(out, "%spitchacc: %f\n", CL, _vehicle_attitude.pitchacc);
-	fprintf(out, "%syawacc: %f\n\n", CL, _vehicle_attitude.yawacc);
+	fprintf(out, "%syawacc: %f\n", CL, _vehicle_attitude.yawacc);
 
 	fprintf(out, "%smanual x: %f\n", CL, _manual_control_setpoint.x);
 	fprintf(out, "%smanual y: %f\n", CL, _manual_control_setpoint.y);
 	fprintf(out, "%smanual z: %f\n", CL, _manual_control_setpoint.z);
-	fprintf(out, "%smanual r: %f\n\n", CL, _manual_control_setpoint.r);
+	fprintf(out, "%smanual r: %f\n", CL, _manual_control_setpoint.r);
+	fprintf(out, "%smanual aux1: %f\n", CL, _manual_control_setpoint.aux1);
+	fprintf(out, "%smanual aux2: %f\n", CL, _manual_control_setpoint.aux2);
+	fprintf(out, "%smanual aux3: %f\n", CL, _manual_control_setpoint.aux3);
+	fprintf(out, "%smanual aux4: %f\n", CL, _manual_control_setpoint.aux4);
+	fprintf(out, "%smanual aux5: %f\n", CL, _manual_control_setpoint.aux5);
 
-	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		fprintf(out, "%sflag_control_manual_enabled: %s\n", CL, "true");
-	} else {
-		fprintf(out, "%sflag_control_manual_enabled: %s\n", CL, "false");
-	}
+	fprintf(out, "%sflag_control_manual_enabled: %s\n", CL, _vehicle_control_mode.flag_control_manual_enabled ? "true" : "false");
+	fprintf(out, "%sflag_control_auto_enabled: %s\n", CL, _vehicle_control_mode.flag_control_auto_enabled ? "true" : "false");
+	fprintf(out, "%sflag_control_rates_enabled: %s\n", CL, _vehicle_control_mode.flag_control_rates_enabled ? "true" : "false");
+	fprintf(out, "%sflag_control_attitude_enabled: %s\n", CL, _vehicle_control_mode.flag_control_attitude_enabled ? "true" : "false");
 
-	if (_vehicle_control_mode.flag_control_auto_enabled) {
-		fprintf(out, "%sflag_control_auto_enabled: %s\n", CL, "true");
-	} else {
-		fprintf(out, "%sflag_control_auto_enabled: %s\n", CL, "false");
-	}
-
-	if (_vehicle_control_mode.flag_control_rates_enabled) {
-		fprintf(out, "%sflag_control_rates_enabled: %s\n", CL, "true");
-	} else {
-		fprintf(out, "%sflag_control_rates_enabled: %s\n", CL, "false");
-	}
-
-	if (_vehicle_control_mode.flag_control_attitude_enabled) {
-		fprintf(out, "%sflag_control_attitude_enabled: %s\n", CL, "true");
-	} else {
-		fprintf(out, "%sflag_control_attitude_enabled: %s\n", CL, "false");
+	for (int i = 0; i < NUM_ACTUATOR_CONTROLS; i++) {
+		fprintf(out, "%sactuator_controls_0.control[%d]: %f\n", CL, i, _actuator_controls_0.control[i]);
 	}
 }
 
@@ -326,13 +316,13 @@ void AttitudeController::control_main()
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 		// Manual control input pass-through
 		_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
-		_actuator_controls_0.control[1] = _manual_control_setpoint.x; // roll
-		_actuator_controls_0.control[2] = _manual_control_setpoint.r; // yaw
-		_actuator_controls_0.control[3] = _manual_control_setpoint.z; // throttle
-		_actuator_controls_0.control[4] = _manual_control_setpoint.aux1;
-		_actuator_controls_0.control[5] = _manual_control_setpoint.aux2;
-		_actuator_controls_0.control[6] = _manual_control_setpoint.aux3;
-		_actuator_controls_0.control[7] = _manual_control_setpoint.aux4;
+		_actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
+		_actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
+		_actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
+		_actuator_controls_0.control[4] = 0.0;
+		_actuator_controls_0.control[5] = 0.0;
+		_actuator_controls_0.control[6] = 0.0;
+		_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
 	}
 
 	// Timestamp and publish

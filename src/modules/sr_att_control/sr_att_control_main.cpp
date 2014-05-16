@@ -191,7 +191,7 @@ int sr_att_control_main(int argc, char *argv[])
 	optind = 0; // Reset optind
 
 	while (continue_parse) {
-		opt = getopt_long(argc, argv, "sh", options, &opt_idx);
+		opt = getopt_long(argc, argv, "sih", options, &opt_idx);
 
 		if (opt == EOF) {
 			break;
