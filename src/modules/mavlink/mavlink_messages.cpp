@@ -70,6 +70,7 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/navigation_capabilities.h>
+#include <uORB/topics/vehicle_control_debug.h>
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_pwm_output.h>
 #include <drivers/drv_range_finder.h>
@@ -1359,6 +1360,89 @@ protected:
 	}
 };
 
+class MavlinkStreamControlDebug : public MavlinkStream
+{
+public:
+	const char *get_name()
+	{
+		return "DBG_CONTRL";
+	}
+
+	MavlinkStream *new_instance()
+	{
+		return new MavlinkStreamControlDebug();
+	}
+
+private:
+	MavlinkOrbSubscription *debug_ctrl_sub;
+	struct vehicle_control_debug_s *debug_ctrl;
+
+protected:
+	void subscribe(Mavlink *mavlink)
+	{
+		debug_ctrl_sub = mavlink->add_orb_subscription(ORB_ID(vehicle_control_debug));
+		debug_ctrl = (struct vehicle_control_debug_s *) debug_ctrl_sub->get_data();
+	}
+
+	void send(const hrt_abstime t)
+	{
+		if (debug_ctrl_sub->update(t)) {
+			/* send, add spaces so that string buffer is at least 10 chars long */
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_rol_p   ",
+							   debug_ctrl->roll_p);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_pth_p   ",
+							   debug_ctrl->pitch_p);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_yaw_p   ",
+							   debug_ctrl->yaw_p);
+
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_rol_rt_p",
+							   debug_ctrl->roll_rate_p);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_rol_rt_i",
+							   debug_ctrl->roll_rate_i);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_rol_rt_d",
+							   debug_ctrl->roll_rate_d);
+
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_pth_rt_p",
+							   debug_ctrl->pitch_rate_p);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_pth_rt_i",
+							   debug_ctrl->pitch_rate_i);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_pth_rt_d",
+							   debug_ctrl->pitch_rate_d);
+
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_yaw_rt_p",
+							   debug_ctrl->yaw_rate_p);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_yaw_rt_i",
+							   debug_ctrl->yaw_rate_i);
+			mavlink_msg_named_value_float_send(_channel,
+							   debug_ctrl->timestamp / 1000,
+							   "D_yaw_rt_d",
+							   debug_ctrl->yaw_rate_d);
+		}
+	}
+};
+
 MavlinkStream *streams_list[] = {
 	new MavlinkStreamHeartbeat(),
 	new MavlinkStreamSysStatus(),
@@ -1387,5 +1471,6 @@ MavlinkStream *streams_list[] = {
 	new MavlinkStreamCameraCapture(),
 	new MavlinkStreamDistanceSensor(),
 	new MavlinkStreamViconPositionEstimate(),
+	new MavlinkStreamControlDebug(),
 	nullptr
 };

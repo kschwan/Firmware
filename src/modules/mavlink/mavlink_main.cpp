@@ -410,7 +410,7 @@ Mavlink::instance_exists(const char *device_name, Mavlink *self)
 void
 Mavlink::forward_message(mavlink_message_t *msg, Mavlink *self)
 {
-	
+
 	Mavlink *inst;
 	LL_FOREACH(_mavlink_instances, inst) {
 		if (inst != self) {
@@ -1971,6 +1971,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("GLOBAL_POSITION_SETPOINT_INT", 3.0f * rate_mult);
 		configure_stream("ROLL_PITCH_YAW_THRUST_SETPOINT", 3.0f * rate_mult);
 		configure_stream("DISTANCE_SENSOR", 0.5f);
+		configure_stream("DBG_CONTRL", 3.0f);
 		break;
 
 	case MAVLINK_MODE_CAMERA:
