@@ -54,6 +54,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/vehicle_control_debug.h>
 
 namespace singlerotor
 {
@@ -137,6 +138,7 @@ private:
 	struct {
 		orb_advert_t vehicle_rates_setpoint;
 		orb_advert_t actuator_controls_0; /**< attitude actuator controls publication */
+		orb_advert_t vehicle_control_debug;
 	} _pub_handles;
 
 	actuator_armed_s _actuator_armed; /**< uORB actuator_armed topic data */
@@ -147,12 +149,13 @@ private:
 	manual_control_setpoint_s _manual_control_setpoint; /**< uORB manual_control_setpoint topic data */
 	parameter_update_s _parameter_update; /**< uORB parameter_update topic data */
 	actuator_controls_s _actuator_controls_0; /**< uORB actuator_controls_0 topic data */
+	vehicle_control_debug_s _vehicle_control_debug;
 
 	hrt_abstime _control_last_run;
 
-	float _i_roll;
-	float _i_pitch;
-	float _i_yaw;
+	float _i_rollrate;
+	float _i_pitchrate;
+	float _i_yawrate;
 
 	float _e_rollrate_prev;
 	float _e_pitchrate_prev;

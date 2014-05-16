@@ -58,6 +58,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/vehicle_control_debug.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
@@ -212,12 +213,14 @@ void AttitudeController::advertise_open_all()
 {
 	_pub_handles.actuator_controls_0 = orb_advertise(ORB_ID(actuator_controls_0), &_actuator_controls_0);
 	_pub_handles.vehicle_rates_setpoint = orb_advertise(ORB_ID(vehicle_rates_setpoint), &_vehicle_rates_setpoint);
+	_pub_handles.vehicle_control_debug = orb_advertise(ORB_ID(vehicle_control_debug), &_vehicle_control_debug);
 }
 
 void AttitudeController::advertise_close_all()
 {
 	close(_pub_handles.actuator_controls_0);
 	close(_pub_handles.vehicle_rates_setpoint);
+	close(_pub_handles.vehicle_control_debug);
 }
 
 void AttitudeController::get_orb_updates()
@@ -289,6 +292,7 @@ void AttitudeController::control_main()
 	_control_last_run = hrt_absolute_time();
 
 	// Clamp dt's
+	// TODO: review this
 	if (dt < 0.002f) {
 		dt = 0.002f;
 	} else if (dt > 0.02f) {
@@ -312,7 +316,8 @@ void AttitudeController::control_main()
 		control_rates(dt); // this sets _actuator_controls_0 values
 	}
 
-	// MANUAL ?
+	// Manual control
+	// TODO: Stabilized mode
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 		// Manual control input pass-through
 		_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
@@ -328,6 +333,8 @@ void AttitudeController::control_main()
 	// Timestamp and publish
 	_actuator_controls_0.timestamp = hrt_absolute_time();
 	orb_publish(ORB_ID(actuator_controls_0), _pub_handles.actuator_controls_0, &_actuator_controls_0);
+	_vehicle_control_debug.timestamp = hrt_absolute_time();
+	orb_publish(ORB_ID(vehicle_control_debug), _pub_handles.vehicle_control_debug, &_vehicle_control_debug);
 
 	perf_end(_control_loop_perf);
 }
@@ -338,51 +345,73 @@ void AttitudeController::control_attitude()
 	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
 	float e_yaw = _vehicle_attitude_setpoint.yaw_body - _vehicle_attitude.yaw;
 
-	_vehicle_rates_setpoint.roll = e_roll * _control_params.att_p(0);
-	_vehicle_rates_setpoint.pitch = e_pitch * _control_params.att_p(1);
-	_vehicle_rates_setpoint.yaw = e_yaw * _control_params.att_p(2);
+	float p_roll = e_roll * _control_params.att_p(0);
+	float p_pitch = e_pitch * _control_params.att_p(1);
+	float p_yaw = e_yaw * _control_params.att_p(2);
 
-	// Published upon return
+	_vehicle_rates_setpoint.roll = p_roll;
+	_vehicle_rates_setpoint.pitch = p_pitch;
+	_vehicle_rates_setpoint.yaw = p_yaw;
+
+	// Debug output
+	_vehicle_control_debug.roll_p = p_roll;
+	_vehicle_control_debug.pitch_p = p_pitch;
+	_vehicle_control_debug.yaw_p = p_yaw;
+	_vehicle_control_debug.roll_i = 0.0;
+	_vehicle_control_debug.pitch_i = 0.0;
+	_vehicle_control_debug.yaw_i = 0.0;
+	_vehicle_control_debug.roll_d = 0.0;
+	_vehicle_control_debug.pitch_d = 0.0;
+	_vehicle_control_debug.yaw_d = 0.0;
 }
 
 void AttitudeController::control_rates(float dt)
 {
 	// If disarmed, reset integral
 	if (!_actuator_armed.armed) {
-		_i_roll = 0.0;
-		_i_pitch = 0.0;
-		_i_yaw = 0.0;
+		_i_rollrate = 0.0;
+		_i_pitchrate = 0.0;
+		_i_yawrate = 0.0;
 	}
 
 	float e_rollrate = _vehicle_rates_setpoint.roll - _vehicle_attitude.rollspeed;
 	float e_pitchrate = _vehicle_rates_setpoint.pitch - _vehicle_attitude.pitchspeed;
 	float e_yawrate = _vehicle_rates_setpoint.yaw - _vehicle_attitude.yawspeed;
 
-	float p_roll = e_rollrate * _control_params.rate_p(0);
-	float p_pitch = e_pitchrate * _control_params.rate_p(1);
-	float p_yaw = e_yawrate * _control_params.rate_p(2);
+	float p_rollrate = e_rollrate * _control_params.rate_p(0);
+	float p_pitchrate = e_pitchrate * _control_params.rate_p(1);
+	float p_yawrate = e_yawrate * _control_params.rate_p(2);
 
-	float i_roll = _i_roll + e_rollrate * dt * _control_params.rate_i(0);
-	float i_pitch = _i_pitch + e_pitchrate * dt * _control_params.rate_i(1);
-	float i_yaw = _i_yaw + e_yawrate * dt * _control_params.rate_i(2);
+	float i_rollrate = _i_rollrate + e_rollrate * dt * _control_params.rate_i(0);
+	float i_pitchrate = _i_pitchrate + e_pitchrate * dt * _control_params.rate_i(1);
+	float i_yawrate = _i_yawrate + e_yawrate * dt * _control_params.rate_i(2);
 
-	// Windup guard
+	// TODO Windup guard
 
 
-	float d_roll = (e_rollrate - _e_rollrate_prev) / dt * _control_params.rate_d(0);
-	float d_pitch = (e_pitchrate - _e_pitchrate_prev) / dt * _control_params.rate_d(1);
-	float d_yaw = (e_yawrate - _e_yawrate_prev) / dt * _control_params.rate_d(2);
+	float d_rollrate = (e_rollrate - _e_rollrate_prev) / dt * _control_params.rate_d(0);
+	float d_pitchrate = (e_pitchrate - _e_pitchrate_prev) / dt * _control_params.rate_d(1);
+	float d_yawrate = (e_yawrate - _e_yawrate_prev) / dt * _control_params.rate_d(2);
 
 	_e_rollrate_prev = e_rollrate;
 	_e_pitchrate_prev = e_pitchrate;
 	_e_yawrate_prev = e_yawrate;
 
-	_actuator_controls_0.control[0] = p_pitch + i_pitch + d_pitch;
-	_actuator_controls_0.control[1] = p_roll + i_roll + d_roll;
+	_actuator_controls_0.control[0] = p_pitchrate + i_pitchrate + d_pitchrate;
+	_actuator_controls_0.control[1] = p_rollrate + i_rollrate + d_rollrate;
 	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
-	_actuator_controls_0.control[3] = p_yaw + i_yaw + d_yaw;
+	_actuator_controls_0.control[3] = p_yawrate + i_yawrate + d_yawrate;
 
-	// Published upon return
+	// Debug output
+	_vehicle_control_debug.roll_rate_p = p_rollrate;
+	_vehicle_control_debug.pitch_rate_p = p_pitchrate;
+	_vehicle_control_debug.yaw_rate_p = p_yawrate;
+	_vehicle_control_debug.roll_rate_i = i_rollrate;
+	_vehicle_control_debug.pitch_rate_i = i_pitchrate;
+	_vehicle_control_debug.yaw_rate_i = i_yawrate;
+	_vehicle_control_debug.roll_rate_d = d_rollrate;
+	_vehicle_control_debug.pitch_rate_d = d_pitchrate;
+	_vehicle_control_debug.yaw_rate_d = d_yawrate;
 }
 
 } // namespace singlerotor
