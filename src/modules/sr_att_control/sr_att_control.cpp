@@ -357,12 +357,6 @@ void AttitudeController::control_attitude()
 	_vehicle_control_debug.roll_p = p_roll;
 	_vehicle_control_debug.pitch_p = p_pitch;
 	_vehicle_control_debug.yaw_p = p_yaw;
-	_vehicle_control_debug.roll_i = 0.0;
-	_vehicle_control_debug.pitch_i = 0.0;
-	_vehicle_control_debug.yaw_i = 0.0;
-	_vehicle_control_debug.roll_d = 0.0;
-	_vehicle_control_debug.pitch_d = 0.0;
-	_vehicle_control_debug.yaw_d = 0.0;
 }
 
 void AttitudeController::control_rates(float dt)
