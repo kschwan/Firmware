@@ -8,3 +8,4 @@ attitude_estimator_ekf start
 position_estimator_inav start
 
 sr_att_control --start
+sr_pos_control --start
