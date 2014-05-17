@@ -79,6 +79,8 @@ AttitudeController::AttitudeController()
 	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
 	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
 
+	// Initialize values to 0
+	// TODO: review if this is necessary
 	memset(&_actuator_armed, 0, sizeof(_actuator_armed));
 	memset(&_vehicle_control_mode, 0, sizeof(_vehicle_control_mode));
 	memset(&_vehicle_attitude, 0, sizeof(_vehicle_attitude));
@@ -297,12 +299,13 @@ void AttitudeController::control_main()
 	// Update from all subscribed topics which have new data.
 	get_orb_updates();
 
-	// Time since last run hrt_absolute_time() returns time in microseconds
+	// Time since last run. hrt_absolute_time() returns time in microseconds
 	float dt = (hrt_absolute_time() - _control_last_run) / 1000000.0f;
 	_control_last_run = hrt_absolute_time();
 
 	// Clamp dt's
-	// TODO: review this
+	// TODO: review if control is called with these manually set dt's. That
+	// might not be good?
 	if (dt < 0.002f) {
 		dt = 0.002f;
 	} else if (dt > 0.02f) {
@@ -373,9 +376,9 @@ void AttitudeController::control_rates(float dt)
 {
 	// If disarmed, reset integral
 	if (!_actuator_armed.armed) {
-		_i_rollrate = 0.0;
-		_i_pitchrate = 0.0;
-		_i_yawrate = 0.0;
+		_i_rollrate = 0.0f;
+		_i_pitchrate = 0.0f;
+		_i_yawrate = 0.0f;
 	}
 
 	float e_rollrate = _vehicle_rates_setpoint.roll - _vehicle_attitude.rollspeed;
@@ -403,8 +406,8 @@ void AttitudeController::control_rates(float dt)
 
 	_actuator_controls_0.control[0] = p_rollrate + i_rollrate + d_rollrate;
 	_actuator_controls_0.control[1] = p_pitchrate + i_pitchrate + d_pitchrate;
-	_actuator_controls_0.control[2] = p_yawrate + i_yawrate + d_yawrate;
-	_actuator_controls_0.control[3] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
+	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
+	_actuator_controls_0.control[3] = p_yawrate + i_yawrate + d_yawrate;
 
 	// Debug output
 	_vehicle_control_debug.roll_rate_p = p_rollrate;
