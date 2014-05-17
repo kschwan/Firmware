@@ -9,8 +9,8 @@ set VEHICLE_TYPE sr
 
 set PWM_OUTPUTS 12345678
 set PWM_DISARMED 0
-set PWM_MIN 1200
-set PWM_MAX 1800
+set PWM_MIN 1000
+set PWM_MAX 2000
 
 #
 # Load default params for this platform
