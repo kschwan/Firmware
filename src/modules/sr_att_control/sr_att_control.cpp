@@ -78,6 +78,16 @@ AttitudeController::AttitudeController()
 	_param_handles.yaw_rate_p = param_find("SR_YAWRATE_P");
 	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
 	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
+
+	memset(&_actuator_armed, 0, sizeof(_actuator_armed));
+	memset(&_vehicle_control_mode, 0, sizeof(_vehicle_control_mode));
+	memset(&_vehicle_attitude, 0, sizeof(_vehicle_attitude));
+	memset(&_vehicle_attitude_setpoint, 0, sizeof(_vehicle_attitude_setpoint));
+	memset(&_vehicle_rates_setpoint, 0, sizeof(_vehicle_rates_setpoint));
+	memset(&_manual_control_setpoint, 0, sizeof(_manual_control_setpoint));
+	memset(&_parameter_update, 0, sizeof(_parameter_update));
+	memset(&_actuator_controls_0, 0, sizeof(_actuator_controls_0));
+	memset(&_vehicle_control_debug, 0, sizeof(_vehicle_control_debug));
 }
 
 AttitudeController::~AttitudeController()
@@ -318,17 +328,17 @@ void AttitudeController::control_main()
 
 	// Manual control
 	// TODO: Stabilized mode
-	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		// Manual control input pass-through
-		_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
-		_actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
-		_actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
-		_actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
-		_actuator_controls_0.control[4] = 0.0;
-		_actuator_controls_0.control[5] = 0.0;
-		_actuator_controls_0.control[6] = 0.0;
-		_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
-	}
+	// if (_vehicle_control_mode.flag_control_manual_enabled) {
+	// 	// Manual control input pass-through
+	// 	_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
+	// 	_actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
+	// 	_actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
+	// 	_actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
+	// 	_actuator_controls_0.control[4] = 0.0;
+	// 	_actuator_controls_0.control[5] = 0.0;
+	// 	_actuator_controls_0.control[6] = 0.0;
+	// 	_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
+	// }
 
 	// Timestamp and publish
 	_actuator_controls_0.timestamp = hrt_absolute_time();
@@ -391,10 +401,10 @@ void AttitudeController::control_rates(float dt)
 	_e_pitchrate_prev = e_pitchrate;
 	_e_yawrate_prev = e_yawrate;
 
-	_actuator_controls_0.control[0] = p_pitchrate + i_pitchrate + d_pitchrate;
-	_actuator_controls_0.control[1] = p_rollrate + i_rollrate + d_rollrate;
-	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
-	_actuator_controls_0.control[3] = p_yawrate + i_yawrate + d_yawrate;
+	_actuator_controls_0.control[0] = p_rollrate + i_rollrate + d_rollrate;
+	_actuator_controls_0.control[1] = p_pitchrate + i_pitchrate + d_pitchrate;
+	_actuator_controls_0.control[2] = p_yawrate + i_yawrate + d_yawrate;
+	_actuator_controls_0.control[3] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
 
 	// Debug output
 	_vehicle_control_debug.roll_rate_p = p_rollrate;
