@@ -46,7 +46,11 @@
 #include <systemlib/perf_counter.h>
 #include <systemlib/param/param.h>
 #include <mathlib/mathlib.h>
+#include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/parameter_update.h>
 
 namespace singlerotor
 {
@@ -81,18 +85,36 @@ private:
 	void advertise_close_all();
 	void get_orb_updates();
 	void params_update();
+	void control_main();
 
 private:
 	bool _is_running;
 	bool _should_stop;
 	perf_counter_t _control_loop_perf;
 
+	struct {
+		param_t yaw_manual_sens;
+	} _param_handles;
+
+	// uORB subscription handles
+	struct {
+		int vehicle_control_mode;
+		int vehicle_local_position;
+		int manual_control_setpoint;
+		int parameter_update;
+	} _sub_handles;
+
 	// uORB publications
 	struct {
 		orb_advert_t vehicle_attitude_setpoint;
 	} _pub_handles;
 
+	vehicle_control_mode_s _vehicle_control_mode; /**< uORB vehicle_control_mode topic data */
+	vehicle_local_position_s _vehicle_local_position;
 	vehicle_attitude_setpoint_s _vehicle_attitude_setpoint; /**< uORB vehicle_attitude_setpoint topic data */
+	manual_control_setpoint_s _manual_control_setpoint; /**< uORB manual_control_setpoint topic data */
+	parameter_update_s _parameter_update; /**< uORB parameter_update topic data */
+	float _yaw_manual_sens;
 };
 
 } // namespace singlerotor

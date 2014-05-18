@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <mathlib/mathlib.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
 #include <systemlib/param/param.h>
@@ -52,13 +53,10 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/vehicle_control_mode.h>
-#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
-#include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/actuator_controls.h>
-#include <uORB/topics/vehicle_control_debug.h>
 #include "sr_pos_control.h"
 
 namespace singlerotor
@@ -66,6 +64,17 @@ namespace singlerotor
 
 PositionController::PositionController()
 {
+	_param_handles.yaw_manual_sens = param_find("SRP_MANUAL_YAW_SENS");
+
+	// Initialize values to 0
+	// TODO: review if this is necessary
+	memset(&_vehicle_control_mode, 0, sizeof(_vehicle_control_mode));
+	memset(&_vehicle_attitude_setpoint, 0, sizeof(_vehicle_attitude_setpoint));
+	memset(&_manual_control_setpoint, 0, sizeof(_manual_control_setpoint));
+	memset(&_parameter_update, 0, sizeof(_parameter_update));
+	memset(&_vehicle_local_position, 0, sizeof(_vehicle_local_position));
+
+	_yaw_manual_sens = 0.0f;
 }
 
 PositionController::~PositionController()
@@ -76,21 +85,43 @@ int PositionController::run(int argc, char *argv[])
 {
 	_is_running = true;
 	_should_stop = false;
-	_control_loop_perf = perf_alloc(PC_ELAPSED, "sr_att_control_loop");
+	_control_loop_perf = perf_alloc(PC_ELAPSED, "sr_pos_control_loop");
 	subscribe_all();
 	advertise_open_all();
 	params_update();
 
+	struct pollfd fds[2];
+	fds[0].fd = _sub_handles.parameter_update;
+	fds[0].events = POLLIN;
+	fds[1].fd = _sub_handles.vehicle_local_position;
+	fds[1].events = POLLIN;
+
 	// This is the main loop of the task.
 	while (!_should_stop) {
-		_vehicle_attitude_setpoint.roll_body = 0.0f;
-		_vehicle_attitude_setpoint.pitch_body = 0.0f;
-		_vehicle_attitude_setpoint.yaw_body = 0.0f;
-		_vehicle_attitude_setpoint.R_valid = false;
+		// Wait for event on file descriptors.
+		int ret = poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 500);
 
-		orb_publish(ORB_ID(vehicle_attitude_setpoint), _pub_handles.vehicle_attitude_setpoint, &_vehicle_attitude_setpoint);
+		if (ret < 0) {
+			// Error.
+			warn("PositionController: poll error %d, %d", ret, errno);
+			continue;
+		} else if (ret == 0) {
+			// Timeout.
+			continue;
+		}
 
-		sleep(1);
+		// If parameters were updated we clear the parameter_update topic
+		// updated flag and then update the local parameter cache.
+		if (fds[0].revents & POLLIN) {
+			orb_copy(ORB_ID(parameter_update), _sub_handles.parameter_update, &_parameter_update);
+			params_update();
+		}
+
+		// If vehicle position has changed, we run the control loop with
+		// the updates values.
+		if (fds[1].revents & POLLIN) {
+			control_main();
+		}
 	}
 
 	// Clean-up and exit
@@ -113,10 +144,18 @@ bool PositionController::is_running() const
 
 void PositionController::subscribe_all()
 {
+	_sub_handles.vehicle_control_mode = orb_subscribe(ORB_ID(vehicle_control_mode));
+	_sub_handles.vehicle_local_position = orb_subscribe(ORB_ID(vehicle_local_position));
+	_sub_handles.manual_control_setpoint = orb_subscribe(ORB_ID(manual_control_setpoint));
+	_sub_handles.parameter_update = orb_subscribe(ORB_ID(parameter_update));
 }
 
 void PositionController::unsubscribe_all()
 {
+	orb_unsubscribe(_sub_handles.vehicle_control_mode);
+	orb_unsubscribe(_sub_handles.vehicle_local_position);
+	orb_unsubscribe(_sub_handles.manual_control_setpoint);
+	orb_unsubscribe(_sub_handles.parameter_update);
 }
 
 void PositionController::advertise_open_all()
@@ -131,10 +170,60 @@ void PositionController::advertise_close_all()
 
 void PositionController::get_orb_updates()
 {
+	bool updated;
+
+	orb_check(_sub_handles.vehicle_control_mode, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_control_mode), _sub_handles.vehicle_control_mode, &_vehicle_control_mode);
+	}
+
+	orb_check(_sub_handles.manual_control_setpoint, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(manual_control_setpoint), _sub_handles.manual_control_setpoint, &_manual_control_setpoint);
+	}
+
+	orb_check(_sub_handles.vehicle_local_position, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_local_position), _sub_handles.vehicle_local_position, &_vehicle_local_position);
+	}
 }
 
 void PositionController::params_update()
 {
+	param_get(_param_handles.yaw_manual_sens, &_yaw_manual_sens);
+}
+
+void PositionController::control_main()
+{
+	perf_begin(_control_loop_perf);
+	get_orb_updates();
+
+	// Manual (stabilized) control
+	if (_vehicle_control_mode.flag_control_manual_enabled) {
+
+
+		// TODO: check for invalid values (NaN)
+		_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.x;
+		_vehicle_attitude_setpoint.pitch_body = _manual_control_setpoint.y;
+
+		// If yaw-stick is in neutral position, its output
+		// should be 0, thus maintaining the same yaw setpoint.
+		// _vehicle_attitude_setpoint.yaw_body += _manual_control_setpoint.r * _yaw_manual_sens;
+		_vehicle_attitude_setpoint.yaw_body = _manual_control_setpoint.r;
+
+		// Yaw angle must be in the interval [-pi ; pi]
+		//math::constrain(_vehicle_attitude_setpoint.yaw_body, -M_PI, M_PI); // FIXME
+
+		_vehicle_attitude_setpoint.R_valid = false;
+
+		_vehicle_attitude_setpoint.timestamp = hrt_absolute_time();
+		orb_publish(ORB_ID(vehicle_attitude_setpoint), _pub_handles.vehicle_attitude_setpoint, &_vehicle_attitude_setpoint);
+	}
+
+	perf_end(_control_loop_perf);
 }
 
 } // namespace singlerotor

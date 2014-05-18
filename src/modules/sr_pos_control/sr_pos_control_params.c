@@ -40,3 +40,5 @@
 
 #include <systemlib/param/param.h>
 
+// Manual yaw sensitivity. 1 = pass through from rc transmitter
+PARAM_DEFINE_FLOAT(SRP_MANUAL_YAW_SENS, 0.5f);
