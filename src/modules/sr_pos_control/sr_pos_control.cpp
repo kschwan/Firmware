@@ -53,6 +53,7 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/manual_control_setpoint.h>
@@ -69,6 +70,7 @@ PositionController::PositionController()
 	// Initialize values to 0
 	// TODO: review if this is necessary
 	memset(&_vehicle_control_mode, 0, sizeof(_vehicle_control_mode));
+	memset(&_vehicle_attitude, 0, sizeof(_vehicle_attitude));
 	memset(&_vehicle_attitude_setpoint, 0, sizeof(_vehicle_attitude_setpoint));
 	memset(&_manual_control_setpoint, 0, sizeof(_manual_control_setpoint));
 	memset(&_parameter_update, 0, sizeof(_parameter_update));
@@ -117,7 +119,7 @@ int PositionController::run(int argc, char *argv[])
 			params_update();
 		}
 
-		// If vehicle position has changed, we run the control loop with
+		// If vehicle position has updated, we run the control loop with
 		// the updates values.
 		if (fds[1].revents & POLLIN) {
 			control_main();
@@ -145,6 +147,7 @@ bool PositionController::is_running() const
 void PositionController::subscribe_all()
 {
 	_sub_handles.vehicle_control_mode = orb_subscribe(ORB_ID(vehicle_control_mode));
+	_sub_handles.vehicle_attitude = orb_subscribe(ORB_ID(vehicle_attitude));
 	_sub_handles.vehicle_local_position = orb_subscribe(ORB_ID(vehicle_local_position));
 	_sub_handles.manual_control_setpoint = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_sub_handles.parameter_update = orb_subscribe(ORB_ID(parameter_update));
@@ -153,6 +156,7 @@ void PositionController::subscribe_all()
 void PositionController::unsubscribe_all()
 {
 	orb_unsubscribe(_sub_handles.vehicle_control_mode);
+	orb_unsubscribe(_sub_handles.vehicle_attitude);
 	orb_unsubscribe(_sub_handles.vehicle_local_position);
 	orb_unsubscribe(_sub_handles.manual_control_setpoint);
 	orb_unsubscribe(_sub_handles.parameter_update);
@@ -178,6 +182,12 @@ void PositionController::get_orb_updates()
 		orb_copy(ORB_ID(vehicle_control_mode), _sub_handles.vehicle_control_mode, &_vehicle_control_mode);
 	}
 
+	orb_check(_sub_handles.vehicle_attitude, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(vehicle_attitude), _sub_handles.vehicle_attitude, &_vehicle_attitude);
+	}
+
 	orb_check(_sub_handles.manual_control_setpoint, &updated);
 
 	if (updated) {
@@ -194,6 +204,8 @@ void PositionController::get_orb_updates()
 void PositionController::params_update()
 {
 	param_get(_param_handles.yaw_manual_sens, &_yaw_manual_sens);
+
+	// TODO get all!
 }
 
 void PositionController::control_main()
@@ -204,21 +216,20 @@ void PositionController::control_main()
 	// Manual (stabilized) control
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 
+		if (isfinite(_manual_control_setpoint.x)
+		    && isfinite(_manual_control_setpoint.y)
+		    && isfinite(_manual_control_setpoint.z)
+		    && isfinite(_manual_control_setpoint.r)) {
 
-		// TODO: check for invalid values (NaN)
-		_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.x;
-		_vehicle_attitude_setpoint.pitch_body = _manual_control_setpoint.y;
+			_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.x;
+			_vehicle_attitude_setpoint.pitch_body = _manual_control_setpoint.y;
 
-		// If yaw-stick is in neutral position, its output
-		// should be 0, thus maintaining the same yaw setpoint.
-		// _vehicle_attitude_setpoint.yaw_body += _manual_control_setpoint.r * _yaw_manual_sens;
-		_vehicle_attitude_setpoint.yaw_body = _manual_control_setpoint.r;
+			// TODO: Can yaw angle get out of bounds [-pi ; pi] ?
+			_vehicle_attitude_setpoint.yaw_body = _vehicle_attitude.yaw + _manual_control_setpoint.r * _yaw_manual_sens;
+		}
 
-		// Yaw angle must be in the interval [-pi ; pi]
-		//math::constrain(_vehicle_attitude_setpoint.yaw_body, -M_PI, M_PI); // FIXME
-
+		// Publish
 		_vehicle_attitude_setpoint.R_valid = false;
-
 		_vehicle_attitude_setpoint.timestamp = hrt_absolute_time();
 		orb_publish(ORB_ID(vehicle_attitude_setpoint), _pub_handles.vehicle_attitude_setpoint, &_vehicle_attitude_setpoint);
 	}

@@ -47,6 +47,7 @@
 #include <systemlib/param/param.h>
 #include <mathlib/mathlib.h>
 #include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/manual_control_setpoint.h>
@@ -100,6 +101,7 @@ private:
 	struct {
 		int vehicle_control_mode;
 		int vehicle_local_position;
+		int vehicle_attitude;
 		int manual_control_setpoint;
 		int parameter_update;
 	} _sub_handles;
@@ -111,6 +113,7 @@ private:
 
 	vehicle_control_mode_s _vehicle_control_mode; /**< uORB vehicle_control_mode topic data */
 	vehicle_local_position_s _vehicle_local_position;
+	vehicle_attitude_s _vehicle_attitude;
 	vehicle_attitude_setpoint_s _vehicle_attitude_setpoint; /**< uORB vehicle_attitude_setpoint topic data */
 	manual_control_setpoint_s _manual_control_setpoint; /**< uORB manual_control_setpoint topic data */
 	parameter_update_s _parameter_update; /**< uORB parameter_update topic data */
