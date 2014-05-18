@@ -17,7 +17,7 @@ mavlink stream -d /dev/ttyACM0 -s ATTITUDE_CONTROLS -r 30
 usleep 100000
 mavlink stream -d /dev/ttyACM0 -s SERVO_OUTPUT_RAW_0 -r 20
 usleep 100000
-mavlink stream -d /dev/ttyACM0 -s ROLL_PITCH_YAW_THRUST_SETPOINT -r 10
+mavlink stream -d /dev/ttyACM0 -s ROLL_PITCH_YAW_THRUST_SETPOINT -r 20
 usleep 100000
 
 # Exit shell to make it available to MAVLink
