@@ -65,7 +65,8 @@ namespace singlerotor
 
 PositionController::PositionController()
 {
-	_param_handles.yaw_manual_sens = param_find("SRP_MANUAL_YAW_SENS");
+	_param_handles.yaw_manual_sens = param_find("SRP_MAN_YAW_SENS");
+	_param_handles.thrust_gain_hax = param_find("SRP_THRUST_GAIN");
 
 	// Initialize values to 0
 	// TODO: review if this is necessary
@@ -77,6 +78,7 @@ PositionController::PositionController()
 	memset(&_vehicle_local_position, 0, sizeof(_vehicle_local_position));
 
 	_yaw_manual_sens = 0.0f;
+	_thrust_gain_hax = 0.0f;
 }
 
 PositionController::~PositionController()
@@ -204,6 +206,7 @@ void PositionController::get_orb_updates()
 void PositionController::params_update()
 {
 	param_get(_param_handles.yaw_manual_sens, &_yaw_manual_sens);
+	param_get(_param_handles.thrust_gain_hax, &_thrust_gain_hax);
 
 	// TODO get all!
 }
@@ -221,11 +224,17 @@ void PositionController::control_main()
 		    && isfinite(_manual_control_setpoint.z)
 		    && isfinite(_manual_control_setpoint.r)) {
 
-			_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.x;
-			_vehicle_attitude_setpoint.pitch_body = _manual_control_setpoint.y;
+			_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.y;
+			_vehicle_attitude_setpoint.pitch_body = -_manual_control_setpoint.x;
+			_vehicle_attitude_setpoint.thrust = _manual_control_setpoint.z * _thrust_gain_hax; // FUCK FIXME
 
 			// TODO: Can yaw angle get out of bounds [-pi ; pi] ?
-			_vehicle_attitude_setpoint.yaw_body = _vehicle_attitude.yaw + _manual_control_setpoint.r * _yaw_manual_sens;
+			_vehicle_attitude_setpoint.yaw_body = _vehicle_attitude_setpoint.yaw_body + _manual_control_setpoint.r * _yaw_manual_sens;
+			if (_vehicle_attitude_setpoint.yaw_body > M_PI) {
+				_vehicle_attitude_setpoint.yaw_body = M_PI;
+			} else if (_vehicle_attitude_setpoint.yaw_body < -M_PI) {
+				_vehicle_attitude_setpoint.yaw_body = -M_PI;
+			}
 		}
 
 		// Publish

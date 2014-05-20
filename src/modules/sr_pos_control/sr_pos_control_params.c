@@ -41,7 +41,9 @@
 #include <systemlib/param/param.h>
 
 // Manual yaw sensitivity. 1 = direct pass through from rc transmitter
-PARAM_DEFINE_FLOAT(SRP_MANUAL_YAW_SENS, 0.1f);
+PARAM_DEFINE_FLOAT(SRP_MAN_YAW_SENS, 0.1f);
+
+PARAM_DEFINE_FLOAT(SRP_THRUST_GAIN, 1.0f);
 
 // Max roll angle allowed (in degrees)
 //PARAM_DEFINE_FLOAT(SRP_MAX_ROLL, 6.0f);

@@ -331,17 +331,20 @@ void AttitudeController::control_main()
 
 	// Manual control
 	// TODO: Stabilized mode
-	// if (_vehicle_control_mode.flag_control_manual_enabled) {
-	// 	// Manual control input pass-through
-	// 	_actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
-	// 	_actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
-	// 	_actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
-	// 	_actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
-	// 	_actuator_controls_0.control[4] = 0.0;
-	// 	_actuator_controls_0.control[5] = 0.0;
-	// 	_actuator_controls_0.control[6] = 0.0;
-	// 	_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
-	// }
+	if (_vehicle_control_mode.flag_control_manual_enabled) {
+		// Manual control input pass-through
+		// _actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
+		// _actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
+		// _actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
+		// _actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
+		// _actuator_controls_0.control[4] = 0.0;
+		// _actuator_controls_0.control[5] = 0.0;
+		// _actuator_controls_0.control[6] = 0.0;
+
+
+		// FUCK FIXME
+		_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
+	}
 
 	// Timestamp and publish
 	_actuator_controls_0.timestamp = hrt_absolute_time();

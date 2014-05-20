@@ -95,6 +95,7 @@ private:
 
 	struct {
 		param_t yaw_manual_sens;
+		param_t thrust_gain_hax;
 	} _param_handles;
 
 	// uORB subscription handles
@@ -117,7 +118,10 @@ private:
 	vehicle_attitude_setpoint_s _vehicle_attitude_setpoint; /**< uORB vehicle_attitude_setpoint topic data */
 	manual_control_setpoint_s _manual_control_setpoint; /**< uORB manual_control_setpoint topic data */
 	parameter_update_s _parameter_update; /**< uORB parameter_update topic data */
+
 	float _yaw_manual_sens;
+	float _thrust_gain_hax;
+
 };
 
 } // namespace singlerotor
