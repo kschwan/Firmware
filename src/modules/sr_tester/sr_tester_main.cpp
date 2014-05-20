@@ -76,7 +76,7 @@ int adc_logger_thread_main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	strcpy(dbg.key, "potmeter");
+	strcpy(dbg.key, "adc15");
 	dbg.value = 0.0f;
 
 	orb_advert_t pub_dbg = orb_advertise(ORB_ID(debug_key_value), &dbg);
@@ -90,15 +90,22 @@ int adc_logger_thread_main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		int num_channels = count / sizeof(sample[0]);
+		unsigned num_channels = count / sizeof(sample[0]);
 
 		// TODO: Decide which channel want to forward on mavlink
-		dbg.value = static_cast<float>(sample[0].am_data); // BEWARE uint32_t -> float?
+		for (unsigned i = 0; i < num_channels; i++) {
+			if (sample[i].am_channel == 15) {
+				dbg.value = static_cast<float>(sample[i].am_data); // BEWARE uint32_t -> float?
+				break;
+			} else {
+				dbg.value = 0.0f;
+			}
+		}
 
 		dbg.timestamp_ms = hrt_absolute_time() / 1000.0f;
 		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
 
-		usleep(10000); // Sample rate?
+		usleep(20000); // Sample rate = 20 ms ~ 50Hz
 	}
 
 	close(pub_dbg);
