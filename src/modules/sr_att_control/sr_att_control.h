@@ -91,7 +91,7 @@ private:
 	void get_orb_updates();
 	void params_update();
 	void control_main();
-	void control_attitude();
+	void control_attitude(float dt);
 	void control_rates(float dt);
 
 private:
@@ -102,6 +102,7 @@ private:
 	// Control parameter vectors
 	struct {
 		math::Vector<3> att_p; /**< P gain for attitude error */
+		math::Vector<3> att_i; /**< I gain for attitude error */
 		math::Vector<3> rate_p; /**< P gain for angular rate error */
 		math::Vector<3> rate_i; /**< I gain for angular rate error */
 		math::Vector<3> rate_d; /**< D gain for angular rate error */
@@ -110,14 +111,17 @@ private:
 	// Parameter handles
 	struct {
 		param_t roll_p;
+		param_t roll_i;
 		param_t roll_rate_p;
 		param_t roll_rate_i;
 		param_t roll_rate_d;
 		param_t pitch_p;
+		param_t pitch_i;
 		param_t pitch_rate_p;
 		param_t pitch_rate_i;
 		param_t pitch_rate_d;
 		param_t yaw_p;
+		param_t yaw_i;
 		param_t yaw_rate_p;
 		param_t yaw_rate_i;
 		param_t yaw_rate_d;
@@ -152,6 +156,10 @@ private:
 	vehicle_control_debug_s _vehicle_control_debug;
 
 	hrt_abstime _control_last_run;
+
+	float _i_roll;
+	float _i_pitch;
+	float _i_yaw;
 
 	float _i_rollrate;
 	float _i_pitchrate;

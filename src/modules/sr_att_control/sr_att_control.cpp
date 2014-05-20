@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <mathlib/mathlib.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
 #include <systemlib/param/param.h>
@@ -67,14 +68,17 @@ namespace singlerotor
 AttitudeController::AttitudeController()
 {
 	_param_handles.roll_p = param_find("SR_ROLL_P");
+	_param_handles.roll_i = param_find("SR_ROLL_I");
 	_param_handles.roll_rate_p = param_find("SR_ROLLRATE_P");
 	_param_handles.roll_rate_i = param_find("SR_ROLLRATE_I");
 	_param_handles.roll_rate_d = param_find("SR_ROLLRATE_D");
 	_param_handles.pitch_p = param_find("SR_PITCH_P");
+	_param_handles.pitch_i = param_find("SR_PITCH_I");
 	_param_handles.pitch_rate_p = param_find("SR_PITCHRATE_P");
 	_param_handles.pitch_rate_i = param_find("SR_PITCHRATE_I");
 	_param_handles.pitch_rate_d = param_find("SR_PITCHRATE_D");
 	_param_handles.yaw_p = param_find("SR_YAW_P");
+	_param_handles.yaw_i = param_find("SR_YAW_I");
 	_param_handles.yaw_rate_p = param_find("SR_YAWRATE_P");
 	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
 	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
@@ -279,14 +283,17 @@ void AttitudeController::get_orb_updates()
 void AttitudeController::params_update()
 {
 	param_get(_param_handles.roll_p, &_control_params.att_p(0));
+	param_get(_param_handles.roll_i, &_control_params.att_i(0));
 	param_get(_param_handles.roll_rate_p, &_control_params.rate_p(0));
 	param_get(_param_handles.roll_rate_i, &_control_params.rate_i(0));
 	param_get(_param_handles.roll_rate_d, &_control_params.rate_d(0));
 	param_get(_param_handles.pitch_p, &_control_params.att_p(1));
+	param_get(_param_handles.pitch_i, &_control_params.att_i(1));
 	param_get(_param_handles.pitch_rate_p, &_control_params.rate_p(1));
 	param_get(_param_handles.pitch_rate_i, &_control_params.rate_i(1));
 	param_get(_param_handles.pitch_rate_d, &_control_params.rate_d(1));
 	param_get(_param_handles.yaw_p, &_control_params.att_p(2));
+	param_get(_param_handles.yaw_i, &_control_params.att_i(2));
 	param_get(_param_handles.yaw_rate_p, &_control_params.rate_p(2));
 	param_get(_param_handles.yaw_rate_i, &_control_params.rate_i(2));
 	param_get(_param_handles.yaw_rate_d, &_control_params.rate_d(2));
@@ -314,7 +321,7 @@ void AttitudeController::control_main()
 
 	if (_vehicle_control_mode.flag_control_attitude_enabled) {
 		// Attitude stabilization is active: Run attitude control loop.
-		control_attitude();
+		control_attitude(dt);
 		_vehicle_rates_setpoint.timestamp = hrt_absolute_time();
 		orb_publish(ORB_ID(vehicle_rates_setpoint), _pub_handles.vehicle_rates_setpoint, &_vehicle_rates_setpoint);
 	} else {
@@ -355,19 +362,34 @@ void AttitudeController::control_main()
 	perf_end(_control_loop_perf);
 }
 
-void AttitudeController::control_attitude()
+void AttitudeController::control_attitude(float dt)
 {
+	// If disarmed, reset integral
+	if (!_actuator_armed.armed) {
+		_i_roll = 0.0f;
+		_i_pitch = 0.0f;
+		_i_yaw = 0.0f;
+	}
+
+	// Current error
 	float e_roll = _vehicle_attitude_setpoint.roll_body - _vehicle_attitude.roll;
 	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
 	float e_yaw = _vehicle_attitude_setpoint.yaw_body - _vehicle_attitude.yaw;
 
+	// P
 	float p_roll = e_roll * _control_params.att_p(0);
 	float p_pitch = e_pitch * _control_params.att_p(1);
 	float p_yaw = e_yaw * _control_params.att_p(2);
 
-	_vehicle_rates_setpoint.roll = p_roll;
-	_vehicle_rates_setpoint.pitch = p_pitch;
-	_vehicle_rates_setpoint.yaw = p_yaw;
+	// I (with windup guard)
+	_i_roll = math::constrain(_i_roll + e_roll * dt * _control_params.att_i(0), -1.5f, 1.5f);
+	_i_pitch = math::constrain(_i_pitch + e_pitch * dt * _control_params.att_i(1), -1.5f, 1.5f);
+	_i_yaw = math::constrain(_i_yaw + e_yaw * dt * _control_params.att_i(2), -1.5f, 1.5f);
+
+	// Rate setpoints
+	_vehicle_rates_setpoint.roll = p_roll + _i_roll;
+	_vehicle_rates_setpoint.pitch = p_pitch + _i_pitch;
+	_vehicle_rates_setpoint.yaw = p_yaw + _i_yaw;
 
 	// Debug output
 	_vehicle_control_debug.roll_p = p_roll;
@@ -384,41 +406,42 @@ void AttitudeController::control_rates(float dt)
 		_i_yawrate = 0.0f;
 	}
 
+	// Current error
 	float e_rollrate = _vehicle_rates_setpoint.roll - _vehicle_attitude.rollspeed;
 	float e_pitchrate = _vehicle_rates_setpoint.pitch - _vehicle_attitude.pitchspeed;
 	float e_yawrate = _vehicle_rates_setpoint.yaw - _vehicle_attitude.yawspeed;
 
+	// P
 	float p_rollrate = e_rollrate * _control_params.rate_p(0);
 	float p_pitchrate = e_pitchrate * _control_params.rate_p(1);
 	float p_yawrate = e_yawrate * _control_params.rate_p(2);
 
-	float i_rollrate = _i_rollrate + e_rollrate * dt * _control_params.rate_i(0);
-	float i_pitchrate = _i_pitchrate + e_pitchrate * dt * _control_params.rate_i(1);
-	float i_yawrate = _i_yawrate + e_yawrate * dt * _control_params.rate_i(2);
+	// I (with windup guard)
+	_i_rollrate = math::constrain(_i_rollrate + e_rollrate * dt * _control_params.rate_i(0), -0.4f, 0.4f);
+	_i_pitchrate = math::constrain(_i_pitchrate + e_pitchrate * dt * _control_params.rate_i(1), -0.4f, 0.4f);
+	_i_yawrate = math::constrain(_i_yawrate + e_yawrate * dt * _control_params.rate_i(2), -0.4f, 0.4f);
 
-	// TODO Windup guard
-
-
+	// D
 	float d_rollrate = (e_rollrate - _e_rollrate_prev) / dt * _control_params.rate_d(0);
 	float d_pitchrate = (e_pitchrate - _e_pitchrate_prev) / dt * _control_params.rate_d(1);
 	float d_yawrate = (e_yawrate - _e_yawrate_prev) / dt * _control_params.rate_d(2);
-
 	_e_rollrate_prev = e_rollrate;
 	_e_pitchrate_prev = e_pitchrate;
 	_e_yawrate_prev = e_yawrate;
 
-	_actuator_controls_0.control[0] = p_rollrate + i_rollrate + d_rollrate;
-	_actuator_controls_0.control[1] = p_pitchrate + i_pitchrate + d_pitchrate;
+	// Control output
+	_actuator_controls_0.control[0] = p_rollrate + _i_rollrate + d_rollrate;
+	_actuator_controls_0.control[1] = p_pitchrate + _i_pitchrate + d_pitchrate;
 	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
-	_actuator_controls_0.control[3] = p_yawrate + i_yawrate + d_yawrate;
+	_actuator_controls_0.control[3] = p_yawrate + _i_yawrate + d_yawrate;
 
 	// Debug output
 	_vehicle_control_debug.roll_rate_p = p_rollrate;
 	_vehicle_control_debug.pitch_rate_p = p_pitchrate;
 	_vehicle_control_debug.yaw_rate_p = p_yawrate;
-	_vehicle_control_debug.roll_rate_i = i_rollrate;
-	_vehicle_control_debug.pitch_rate_i = i_pitchrate;
-	_vehicle_control_debug.yaw_rate_i = i_yawrate;
+	_vehicle_control_debug.roll_rate_i = _i_rollrate;
+	_vehicle_control_debug.pitch_rate_i = _i_pitchrate;
+	_vehicle_control_debug.yaw_rate_i = _i_yawrate;
 	_vehicle_control_debug.roll_rate_d = d_rollrate;
 	_vehicle_control_debug.pitch_rate_d = d_pitchrate;
 	_vehicle_control_debug.yaw_rate_d = d_yawrate;
