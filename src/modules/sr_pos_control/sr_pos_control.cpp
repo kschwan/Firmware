@@ -220,11 +220,8 @@ void PositionController::control_main()
 		    && isfinite(_manual_control_setpoint.y)
 		    && isfinite(_manual_control_setpoint.z)
 		    && isfinite(_manual_control_setpoint.r)) {
-
 			_vehicle_attitude_setpoint.roll_body = _manual_control_setpoint.y;
 			_vehicle_attitude_setpoint.pitch_body = -_manual_control_setpoint.x;
-
-			// TODO: Can yaw angle get out of bounds [-pi ; pi] ?
 			_vehicle_attitude_setpoint.yaw_body = _vehicle_attitude_setpoint.yaw_body + _manual_control_setpoint.r * _yaw_manual_sens;
 
 			// Keep yaw angle within bounds [-pi ; pi]
