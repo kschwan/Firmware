@@ -376,20 +376,27 @@ void AttitudeController::control_main()
 	}
 
 	// Manual control
-	// TODO: Stabilized mode
+	// Attitude stabilized. Throttle *and* collective is set using the
+	// throttle-stick, with throttle limited by the aux1 rc input.
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		// Manual control input pass-through
-		// _actuator_controls_0.control[0] = _manual_control_setpoint.y; // pitch
-		// _actuator_controls_0.control[1] = -_manual_control_setpoint.x; // roll
-		// _actuator_controls_0.control[2] = _manual_control_setpoint.z; // collective
-		// _actuator_controls_0.control[3] = _manual_control_setpoint.r; // yaw
-		// _actuator_controls_0.control[4] = 0.0;
-		// _actuator_controls_0.control[5] = 0.0;
-		// _actuator_controls_0.control[6] = 0.0;
+		float man_z = _manual_control_setpoint.z;
+		float throttle_max = _manual_control_setpoint.aux1;
+		float throttle;
+		float collective;
 
+		// Throttle curve
+		throttle = man_z;
+		throttle = math::constrain(throttle, 0.0f, throttle_max);
 
-		// FUCK FIXME
-		_actuator_controls_0.control[7] = _manual_control_setpoint.aux1; // throttle
+		// Collective curve
+		if (man_z >= 0.0f && man_z < 0.4f) {
+			collective = 0.0f;
+		} else if (man_z >= 0.4f && man_z <= 1.0f) {
+			collective = (man_z - 0.4f) * 1.6f * man_z;
+		}
+
+		_actuator_controls_0.control[2] = collective;
+		_actuator_controls_0.control[7] = throttle;
 	}
 
 	// Timestamp and publish
@@ -471,7 +478,6 @@ void AttitudeController::control_rates(float dt)
 	// Control output
 	_actuator_controls_0.control[0] = p_rollrate + _i_rollrate + d_rollrate;
 	_actuator_controls_0.control[1] = p_pitchrate + _i_pitchrate + d_pitchrate;
-	_actuator_controls_0.control[2] = _vehicle_attitude_setpoint.thrust; // Pass through thrust?
 	_actuator_controls_0.control[3] = p_yawrate + _i_yawrate + d_yawrate;
 
 	// Debug output
