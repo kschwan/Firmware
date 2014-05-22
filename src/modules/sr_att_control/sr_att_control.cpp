@@ -384,9 +384,9 @@ void AttitudeController::control_main()
 		float throttle;
 		float collective;
 
-		if (isfinite(_manual_control_setpoint.z) && isfinite(_manual_control_setpoint.aux1)) {
-			float man_z = _manual_control_setpoint.z;
-			float throttle_max = _manual_control_setpoint.aux1;
+		if (!isnan(_manual_control_setpoint.z) && !isnan(_manual_control_setpoint.aux1)) {
+			man_z = _manual_control_setpoint.z;
+			throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // aux1 goes from -1 to 1
 		}
 
 		// Throttle curve
