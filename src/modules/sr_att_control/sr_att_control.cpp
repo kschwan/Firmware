@@ -381,12 +381,16 @@ void AttitudeController::control_main()
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 		float man_z = 0.0f;
 		float throttle_max = 0.0f;
+		float collective_gain;
 		float throttle;
 		float collective;
 
-		if (!isnan(_manual_control_setpoint.z) && !isnan(_manual_control_setpoint.aux1)) {
+		if (!isnan(_manual_control_setpoint.z)
+			&& !isnan(_manual_control_setpoint.aux1)
+			&& !isnan(_manual_control_setpoint.aux2)) {
 			man_z = _manual_control_setpoint.z;
-			throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // aux1 goes from -1 to 1
+			throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // map from -1..1 to 0..1
+			collective_gain = (_manual_control_setpoint.aux2 + 1.0f) / 2.0f + 1.0f; // map from -1..1 to 1..2
 		}
 
 		// Throttle curve
@@ -397,7 +401,7 @@ void AttitudeController::control_main()
 		if (man_z >= 0.0f && man_z < 0.4f) {
 			collective = 0.0f;
 		} else if (man_z >= 0.4f && man_z <= 1.0f) {
-			collective = (man_z - 0.4f) * 1.6f * man_z;
+			collective = (man_z - 0.4f) * 1.6f * man_z * collective_gain;
 		}
 
 		_actuator_controls_0.control[2] = collective;
