@@ -422,6 +422,9 @@ void AttitudeController::control_attitude(float dt)
 	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
 	float e_yaw = _vehicle_attitude_setpoint.yaw_body - _vehicle_attitude.yaw;
 
+	// Avoid large error values as yaw goes past from -pi to pi or vice-versa
+	e_yaw -= 2.0f * M_PI * floorf(0.5f + e_yaw / (2.0f * M_PI));
+
 	// P
 	float p_roll = e_roll * _control_params.att_p(0);
 	float p_pitch = e_pitch * _control_params.att_p(1);

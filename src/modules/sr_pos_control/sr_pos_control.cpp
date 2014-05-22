@@ -226,10 +226,12 @@ void PositionController::control_main()
 
 			// TODO: Can yaw angle get out of bounds [-pi ; pi] ?
 			_vehicle_attitude_setpoint.yaw_body = _vehicle_attitude_setpoint.yaw_body + _manual_control_setpoint.r * _yaw_manual_sens;
+
+			// Keep yaw angle within bounds [-pi ; pi]
 			if (_vehicle_attitude_setpoint.yaw_body > M_PI) {
-				_vehicle_attitude_setpoint.yaw_body = M_PI;
+				_vehicle_attitude_setpoint.yaw_body -= 2 * M_PI;
 			} else if (_vehicle_attitude_setpoint.yaw_body < -M_PI) {
-				_vehicle_attitude_setpoint.yaw_body = -M_PI;
+				_vehicle_attitude_setpoint.yaw_body += 2 * M_PI;
 			}
 		}
 
