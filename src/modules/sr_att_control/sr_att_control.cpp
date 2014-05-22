@@ -379,10 +379,15 @@ void AttitudeController::control_main()
 	// Attitude stabilized. Throttle *and* collective is set using the
 	// throttle-stick, with throttle limited by the aux1 rc input.
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		float man_z = _manual_control_setpoint.z;
-		float throttle_max = _manual_control_setpoint.aux1;
+		float man_z = 0.0f;
+		float throttle_max = 0.0f;
 		float throttle;
 		float collective;
+
+		if (isfinite(_manual_control_setpoint.z) && isfinite(_manual_control_setpoint.aux1)) {
+			float man_z = _manual_control_setpoint.z;
+			float throttle_max = _manual_control_setpoint.aux1;
+		}
 
 		// Throttle curve
 		throttle = man_z;
@@ -422,7 +427,7 @@ void AttitudeController::control_attitude(float dt)
 	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
 	float e_yaw = _vehicle_attitude_setpoint.yaw_body - _vehicle_attitude.yaw;
 
-	// Avoid large error values as yaw goes past from -pi to pi or vice-versa
+	// Pick the shortest route from -pi to pi or vice-versa
 	e_yaw -= 2.0f * M_PI * floorf(0.5f + e_yaw / (2.0f * M_PI));
 
 	// P
