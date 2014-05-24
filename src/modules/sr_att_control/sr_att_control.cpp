@@ -379,19 +379,11 @@ void AttitudeController::control_main()
 	// Attitude stabilized. Throttle *and* collective is set using the
 	// throttle-stick, with throttle limited by the aux1 rc input.
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		float man_z = 0.0f;
-		float throttle_max = 0.0f;
-		float collective_gain;
+		float man_z = _manual_control_setpoint.z;
+		float throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // map from -1..1 to 0..1
+		float collective_gain = (_manual_control_setpoint.aux2 + 1.0f) / 2.0f + 1.0f; // map from -1..1 to 1..2
 		float throttle;
 		float collective;
-
-		if (!isnan(_manual_control_setpoint.z)
-			&& !isnan(_manual_control_setpoint.aux1)
-			&& !isnan(_manual_control_setpoint.aux2)) {
-			man_z = _manual_control_setpoint.z;
-			throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // map from -1..1 to 0..1
-			collective_gain = (_manual_control_setpoint.aux2 + 1.0f) / 2.0f + 1.0f; // map from -1..1 to 1..2
-		}
 
 		// Throttle curve
 		throttle = man_z;
