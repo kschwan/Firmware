@@ -35,7 +35,7 @@
 /**
  * @file sr_att_control.cpp
  *
- * @author Kim Lindberg Schwaner <kim.schwaner@gmail.com>
+ * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
  */
 
 #include <systemlib/param/param.h>

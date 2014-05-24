@@ -1,7 +1,7 @@
 /****************************************************************************
  *
  *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
- *   Author: Kim Lindberg Schwaner <kim.schwaner@gmail.com
+ *   Author: Kim Lindberg Schwaner <kschw10@student.sdu.dk
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,13 +35,12 @@
 /**
  * @file sr_att_control.h
  *
- * @author Kim Lindberg Schwaner <kim.schwaner@gmail.com>
+ * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
  */
 
 #ifndef SR_ATT_CONTROL_H
 #define SR_ATT_CONTROL_H
 
-#include <stdio.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/perf_counter.h>
 #include <systemlib/param/param.h>

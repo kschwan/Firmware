@@ -35,7 +35,7 @@
 /**
  * @file sr_pos_control_params.cpp
  *
- * @author Kim Lindberg Schwaner <kim.schwaner@gmail.com>
+ * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
  */
 
 #include <systemlib/param/param.h>
