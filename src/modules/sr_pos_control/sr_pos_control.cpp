@@ -213,6 +213,17 @@ void PositionController::control_main()
 	perf_begin(_control_loop_perf);
 	get_orb_updates();
 
+
+	/*
+		When VEHICLE_TYPE = VEHICLE_TYPE_HELICOPTER, vehicle_status.is_rotary_wing == true,
+		implying electronic stabilisation.
+		See commander.cpp:882 and commander.cpp:1678
+
+		If we want totally manual control, we need some work-around to do
+		that, instead of only checking the vehicle_control_mode flags.
+	*/
+
+
 	// Manual (stabilized) control
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
 

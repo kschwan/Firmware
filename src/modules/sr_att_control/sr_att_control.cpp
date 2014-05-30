@@ -349,33 +349,17 @@ void AttitudeController::control_main()
 	float dt = (hrt_absolute_time() - _control_last_run) / 1000000.0f;
 	_control_last_run = hrt_absolute_time();
 
-	// Clamp dt's
-	// TODO: review if control is called with these manually set dt's. That
-	// might not be good?
-	if (dt < 0.002f) {
-		dt = 0.002f;
-	} else if (dt > 0.02f) {
-		dt = 0.02f;
-	}
-
 	if (_vehicle_control_mode.flag_control_attitude_enabled) {
-		// Attitude stabilization is active: Run attitude control loop.
 		control_attitude(dt);
 		_vehicle_rates_setpoint.timestamp = hrt_absolute_time();
 		orb_publish(ORB_ID(vehicle_rates_setpoint), _pub_handles.vehicle_rates_setpoint, &_vehicle_rates_setpoint);
-	} else {
-		// Attitude stabilization deactivated. We try to get the
-		// vehicle_rates_setpoint from elsewhere.
-
-		// TODO
 	}
 
 	if (_vehicle_control_mode.flag_control_rates_enabled) {
-		// Angular rate stabilization is active: Run rate control loop.
 		control_rates(dt); // this sets _actuator_controls_0 values
 	}
 
-	// Manual control
+	// Assisted control
 	// Attitude stabilized. Throttle *and* collective is set using the
 	// throttle-stick, with throttle limited by the aux1 rc input.
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
