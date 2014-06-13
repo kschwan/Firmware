@@ -65,45 +65,6 @@
 namespace singlerotor
 {
 
-class MovingAverage
-{
-public:
-	MovingAverage()
-		: _n(6)
-		, _p(0)
-	{
-		reset();
-	}
-
-	void reset()
-	{
-		for (int i = 0; i < _n; i++) {
-			_data[i] += 0.0f;
-		}
-	}
-
-	float get_average() const
-	{
-		float avg = 0.0f;
-
-		for (unsigned i = 0; i < _n; i++) {
-			avg += _data[i];
-		}
-
-		return avg / _n;
-	}
-
-	void add_value(float value)
-	{
-		_data[(_p + 1) % _n] = value;
-	}
-
-private:
-	const unsigned _n;
-	unsigned _p;
-	float _data[12];
-};
-
 AttitudeController::AttitudeController()
 {
 	_param_handles.roll_p = param_find("SR_ROLL_P");
