@@ -80,9 +80,12 @@ static int motor_rpm_task(int argc, char *argv[])
 
 	// Init UART for the MotorRPM
 	if (!mrpm.uart_init(argv[1])) {
-		fprintf(stderr, "%s: UART could not be initialized", argv[1]);
+		fprintf(stderr, "%s: %s could not be initialized", argv[0], argv[1]);
 		return EXIT_FAILURE;
 	}
+
+	// Wait a little before first update
+	usleep(20000);
 
 	// Start task loop
 	task_running = true;

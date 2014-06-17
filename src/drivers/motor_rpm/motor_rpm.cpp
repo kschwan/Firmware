@@ -42,12 +42,14 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 #include <drivers/drv_hrt.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/encoders.h>
+#include <uORB/topics/debug_key_value.h>
 #include "motor_rpm.h"
 
 MotorRPM::MotorRPM()
@@ -55,6 +57,7 @@ MotorRPM::MotorRPM()
 	, _uart_init_ok(false)
 	, _time_last_update(0)
 	, _pub_encoders(nullptr, ORB_ID(encoders))
+	, _pub_debug(nullptr, ORB_ID(debug_key_value))
 {
 }
 
@@ -65,7 +68,7 @@ MotorRPM::~MotorRPM()
 
 bool MotorRPM::uart_init(char const *device)
 {
-	if (device != nullptr) {
+	if (device == nullptr) {
 		return false;
 	}
 
@@ -162,4 +165,11 @@ void MotorRPM::update()
 	// Publish topic
 	_pub_encoders.timestamp = time_now;
 	_pub_encoders.update();
+
+
+	// Debug
+	strcpy(_pub_debug.key, "rpm");
+	_pub_debug.timestamp_ms = time_now / 1000.0f;
+	_pub_debug.value = static_cast<float>(_pub_encoders.counts[0]); // BEWARE uint32_t -> float?
+	_pub_debug.update();
 }

@@ -46,6 +46,7 @@
 #include <termios.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/encoders.h>
+#include <uORB/topics/debug_key_value.h>
 
 class MotorRPM
 {
@@ -67,6 +68,7 @@ private:
 	uint64_t _time_last_update;
 	uint8_t _iobuf[8];
 	uORB::Publication<encoders_s> _pub_encoders;
+	uORB::Publication<debug_key_value_s> _pub_debug;
 };
 
 #endif // MOTOR_RPM_H
