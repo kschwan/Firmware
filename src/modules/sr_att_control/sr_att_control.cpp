@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <mathlib/mathlib.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
@@ -61,12 +62,15 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_debug.h>
 #include <uORB/topics/encoders.h>
+#include <mavlink/mavlink_log.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
 {
 
 AttitudeController::AttitudeController()
+	: _gov_error(false)
+	, _gov_error_count(0)
 {
 	_param_handles.roll_p = param_find("SR_ROLL_P");
 	_param_handles.roll_i = param_find("SR_ROLL_I");
@@ -116,6 +120,7 @@ int AttitudeController::run(int argc, char *argv[])
 	subscribe_all();
 	advertise_open_all();
 	params_update();
+	_mavlink_fd = open(MAVLINK_LOG_DEVICE, 0);
 
 	// Wake up on attitude or control parameter updates. We don't care about
 	// returned events.
@@ -154,6 +159,7 @@ int AttitudeController::run(int argc, char *argv[])
 	}
 
 	// Clean-up and exit
+	close(_mavlink_fd);
 	advertise_close_all();
 	unsubscribe_all();
 	perf_free(_control_loop_perf);
@@ -342,6 +348,11 @@ void AttitudeController::control_main()
 	float dt = (hrt_absolute_time() - _control_last_run) / 1000000.0f;
 	_control_last_run = hrt_absolute_time();
 
+	if (!_actuator_armed.armed) {
+		_gov_error = false;
+		_gov_error_count = 0;
+	}
+
 	if (_vehicle_control_mode.flag_control_attitude_enabled) {
 		control_attitude(dt);
 		_vehicle_rates_setpoint.timestamp = hrt_absolute_time();
@@ -354,24 +365,26 @@ void AttitudeController::control_main()
 
 
 	/*
-		Assisted manual control (sort of)
+	        Assisted manual control (sort of)
 
-		May override the attitude angle and rate controllers in lack of
-		a better solution.
+	        May override the attitude angle and rate controllers in lack of
+	        a better solution.
 
-		Attitude stabilized. Throttle *and* collective is set using the
-		throttle-stick, with throttle limited by the aux1 rc input.
+	        Attitude stabilized. Throttle *and* collective is set using the
+	        throttle-stick, with throttle limited by the aux1 rc input.
 
-		aux1 : governor on/off
-		aux2 : main rotor velocity setpoint
-		aux3 : throttle cut
+	        aux1 : governor on/off
+	        aux2 : main rotor velocity setpoint
+	        aux3 : throttle cut
 	*/
+	if (_gov_error && _gov_error_count == 0) {
+		// Governor error
+		mavlink_log_critical(_mavlink_fd, "Error. Governor disabled.");
+		_gov_error_count++;
+	}
+
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		if (_manual_control_setpoint.aux1 > 0.0f) {
-			// Governor active
-			control_governor(dt); // Sets _actuator_controls_0.control[7] = throttle
-			_actuator_controls_0.control[2] = _manual_control_setpoint.z; // set collective directly
-		} else {
+		if (_manual_control_setpoint.aux1 < 0.0f || _gov_error) {
 			// governor NOT active - use the "old" solution
 			float man_z = _manual_control_setpoint.z;
 			float throttle_max = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
@@ -391,6 +404,10 @@ void AttitudeController::control_main()
 
 			_actuator_controls_0.control[2] = collective;
 			_actuator_controls_0.control[7] = throttle;
+		} else {
+			// Governor active
+			control_governor(dt); // Sets _actuator_controls_0.control[7] = throttle
+			_actuator_controls_0.control[2] = _manual_control_setpoint.z; // set collective directly
 		}
 	}
 
@@ -411,6 +428,10 @@ void AttitudeController::control_main()
 
 void AttitudeController::control_governor(float dt)
 {
+	if (!_encoders.is_valid) {
+		_gov_error = true;
+	}
+
 	// Setpoint from manual control input, range [-1; 1]
 	float sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
 

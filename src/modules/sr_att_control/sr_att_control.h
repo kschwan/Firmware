@@ -100,6 +100,9 @@ private:
 	bool _is_running;
 	bool _should_stop;
 	perf_counter_t _control_loop_perf;
+	int _mavlink_fd;
+	bool _gov_error;
+	int _gov_error_count;
 
 	// Control parameter vectors
 	struct {
