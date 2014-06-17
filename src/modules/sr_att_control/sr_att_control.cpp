@@ -72,16 +72,19 @@ AttitudeController::AttitudeController()
 	_param_handles.roll_rate_p = param_find("SR_ROLLRATE_P");
 	_param_handles.roll_rate_i = param_find("SR_ROLLRATE_I");
 	_param_handles.roll_rate_d = param_find("SR_ROLLRATE_D");
+	_param_handles.roll_ff = param_find("SR_ROLL_FF");
 	_param_handles.pitch_p = param_find("SR_PITCH_P");
 	_param_handles.pitch_i = param_find("SR_PITCH_I");
 	_param_handles.pitch_rate_p = param_find("SR_PITCHRATE_P");
 	_param_handles.pitch_rate_i = param_find("SR_PITCHRATE_I");
 	_param_handles.pitch_rate_d = param_find("SR_PITCHRATE_D");
+	_param_handles.pitch_ff = param_find("SR_PITCH_FF");
 	_param_handles.yaw_p = param_find("SR_YAW_P");
 	_param_handles.yaw_i = param_find("SR_YAW_I");
 	_param_handles.yaw_rate_p = param_find("SR_YAWRATE_P");
 	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
 	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
+	_param_handles.yaw_ff = param_find("SR_YAW_FF");
 
 	// Initialize values to 0
 	// TODO: review if this is necessary
@@ -287,16 +290,19 @@ void AttitudeController::params_update()
 	param_get(_param_handles.roll_rate_p, &_control_params.rate_p(0));
 	param_get(_param_handles.roll_rate_i, &_control_params.rate_i(0));
 	param_get(_param_handles.roll_rate_d, &_control_params.rate_d(0));
+	param_get(_param_handles.roll_ff, &_ff_roll);
 	param_get(_param_handles.pitch_p, &_control_params.att_p(1));
 	param_get(_param_handles.pitch_i, &_control_params.att_i(1));
 	param_get(_param_handles.pitch_rate_p, &_control_params.rate_p(1));
 	param_get(_param_handles.pitch_rate_i, &_control_params.rate_i(1));
 	param_get(_param_handles.pitch_rate_d, &_control_params.rate_d(1));
+	param_get(_param_handles.pitch_ff, &_ff_pitch);
 	param_get(_param_handles.yaw_p, &_control_params.att_p(2));
 	param_get(_param_handles.yaw_i, &_control_params.att_i(2));
 	param_get(_param_handles.yaw_rate_p, &_control_params.rate_p(2));
 	param_get(_param_handles.yaw_rate_i, &_control_params.rate_i(2));
 	param_get(_param_handles.yaw_rate_d, &_control_params.rate_d(2));
+	param_get(_param_handles.yaw_ff, &_ff_yaw);
 }
 
 void AttitudeController::control_main()
@@ -363,6 +369,11 @@ void AttitudeController::control_attitude(float dt)
 		_i_yaw = 0.0f;
 	}
 
+	// Feed forward values
+	float ff_roll =  _vehicle_attitude_setpoint.roll_body * _ff_roll;
+	float ff_pitch = _vehicle_attitude_setpoint.pitch_body * _ff_pitch;
+	float ff_yaw = _vehicle_attitude_setpoint.yaw_body * _ff_yaw;
+
 	// Current error
 	float e_roll = _vehicle_attitude_setpoint.roll_body - _vehicle_attitude.roll;
 	float e_pitch = _vehicle_attitude_setpoint.pitch_body - _vehicle_attitude.pitch;
@@ -382,9 +393,9 @@ void AttitudeController::control_attitude(float dt)
 	_i_yaw = math::constrain(_i_yaw + e_yaw * dt * _control_params.att_i(2), -1.5f, 1.5f);
 
 	// Rate setpoints
-	_vehicle_rates_setpoint.roll = p_roll + _i_roll;
-	_vehicle_rates_setpoint.pitch = p_pitch + _i_pitch;
-	_vehicle_rates_setpoint.yaw = p_yaw + _i_yaw;
+	_vehicle_rates_setpoint.roll = p_roll + _i_roll + ff_roll;
+	_vehicle_rates_setpoint.pitch = p_pitch + _i_pitch + ff_pitch;
+	_vehicle_rates_setpoint.yaw = p_yaw + _i_yaw + ff_yaw;
 
 	// Debug output
 	_vehicle_control_debug.roll_p = p_roll;

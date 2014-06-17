@@ -114,16 +114,19 @@ private:
 		param_t roll_rate_p;
 		param_t roll_rate_i;
 		param_t roll_rate_d;
+		param_t roll_ff;
 		param_t pitch_p;
 		param_t pitch_i;
 		param_t pitch_rate_p;
 		param_t pitch_rate_i;
 		param_t pitch_rate_d;
+		param_t pitch_ff;
 		param_t yaw_p;
 		param_t yaw_i;
 		param_t yaw_rate_p;
 		param_t yaw_rate_i;
 		param_t yaw_rate_d;
+		param_t yaw_ff;
 	} _param_handles;
 
 	// uORB subscription handles
@@ -167,6 +170,10 @@ private:
 	float _e_rollrate_prev;
 	float _e_pitchrate_prev;
 	float _e_yawrate_prev;
+
+	float _ff_roll;
+	float _ff_pitch;
+	float _ff_yaw;
 };
 
 } // namespace singlerotor
