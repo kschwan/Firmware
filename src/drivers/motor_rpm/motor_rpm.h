@@ -59,7 +59,7 @@ public:
 
 private:
 	struct Cmd {
-		static const uint8_t REQUEST = 0x03;
+		static const uint8_t REQUEST = 10;
 	};
 
 	int _fd;

@@ -49,12 +49,20 @@
  * @{
  */
 
-#define NUM_ENCODERS 4
+
+/*
+	Haxxing this to provide what we need to quickly get our governor working
+	correctly...
+
+	Kim Schwaner 17/6-14
+*/
 
 struct encoders_s {
 	uint64_t timestamp;
-	int64_t counts[NUM_ENCODERS]; // counts of encoder
-	float velocity[NUM_ENCODERS]; // counts of encoder/ second
+	int64_t counts; // counts of encoder since last update
+	float counts_per_sec; // counts of encoder/second
+	float rotor_shaft_velocity; // rotor shaft angular velocity in rad/s
+	bool is_valid; // we set this to false if bad input is detected by the driver
 };
 
 /**

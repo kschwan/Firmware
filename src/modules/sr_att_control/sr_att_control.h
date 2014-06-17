@@ -54,6 +54,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_debug.h>
+#include <uORB/topics/encoders.h>
 
 namespace singlerotor
 {
@@ -89,7 +90,9 @@ private:
 	void advertise_close_all();
 	void get_orb_updates();
 	void params_update();
+	float map_value_linear_range(float val, float from1, float from2, float to1, float to2);
 	void control_main();
+	void control_governor(float dt);
 	void control_attitude(float dt);
 	void control_rates(float dt);
 
@@ -127,6 +130,9 @@ private:
 		param_t yaw_rate_i;
 		param_t yaw_rate_d;
 		param_t yaw_ff;
+		param_t gov_low;
+		param_t gov_high;
+		param_t gov_p;
 	} _param_handles;
 
 	// uORB subscription handles
@@ -138,6 +144,7 @@ private:
 		int vehicle_rates_setpoint;
 		int manual_control_setpoint;
 		int parameter_update;
+		int encoders;
 	} _sub_handles;
 
 	// uORB publications
@@ -156,6 +163,7 @@ private:
 	parameter_update_s _parameter_update; /**< uORB parameter_update topic data */
 	actuator_controls_s _actuator_controls_0; /**< uORB actuator_controls_0 topic data */
 	vehicle_control_debug_s _vehicle_control_debug;
+	encoders_s _encoders;
 
 	hrt_abstime _control_last_run;
 
@@ -171,9 +179,13 @@ private:
 	float _e_pitchrate_prev;
 	float _e_yawrate_prev;
 
+	// params
 	float _ff_roll;
 	float _ff_pitch;
 	float _ff_yaw;
+	float _gov_low;
+	float _gov_high;
+	float _gov_p;
 };
 
 } // namespace singlerotor

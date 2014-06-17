@@ -70,6 +70,8 @@ static int motor_rpm_task(int argc, char *argv[])
 	atexit(&motor_rpm_atexit);
 	MotorRPM mrpm;
 
+	task_running = true;
+
 	// Argument sanity check
 	if (argc != 2) {
 		return EXIT_FAILURE;
@@ -85,14 +87,12 @@ static int motor_rpm_task(int argc, char *argv[])
 	}
 
 	// Wait a little before first update
-	usleep(20000);
+	sleep(1);
 
-	// Start task loop
-	task_running = true;
-
+	// Task loop
 	while (!task_should_exit) {
 		mrpm.update();
-		usleep(10000); // Update rate = 10 ms ~ 100Hz
+		usleep(100000); // Update rate = 100 ms ~ 10Hz
 	}
 
 	return EXIT_SUCCESS;
@@ -148,7 +148,7 @@ int motor_rpm_main(int argc, char *argv[])
 			return task_spawn_cmd("motor_rpmd",
 					      SCHED_DEFAULT,
 					      SCHED_PRIORITY_MAX - 5,
-					      1024,
+					      2048,
 					      static_cast<main_t>(&motor_rpm_task),
 					      task_argv);
 		}

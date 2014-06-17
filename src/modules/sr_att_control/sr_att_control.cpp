@@ -60,6 +60,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_debug.h>
+#include <uORB/topics/encoders.h>
 #include "sr_att_control.h"
 
 namespace singlerotor
@@ -85,6 +86,9 @@ AttitudeController::AttitudeController()
 	_param_handles.yaw_rate_i = param_find("SR_YAWRATE_I");
 	_param_handles.yaw_rate_d = param_find("SR_YAWRATE_D");
 	_param_handles.yaw_ff = param_find("SR_YAW_FF");
+	_param_handles.gov_low = param_find("GOV_LOW");
+	_param_handles.gov_high = param_find("GOV_HIGH");
+	_param_handles.gov_p = param_find("GOV_P");
 
 	// Initialize values to 0
 	// TODO: review if this is necessary
@@ -97,6 +101,7 @@ AttitudeController::AttitudeController()
 	memset(&_parameter_update, 0, sizeof(_parameter_update));
 	memset(&_actuator_controls_0, 0, sizeof(_actuator_controls_0));
 	memset(&_vehicle_control_debug, 0, sizeof(_vehicle_control_debug));
+	memset(&_encoders, 0, sizeof(_encoders));
 }
 
 AttitudeController::~AttitudeController()
@@ -215,6 +220,7 @@ void AttitudeController::subscribe_all()
 	_sub_handles.vehicle_rates_setpoint = orb_subscribe(ORB_ID(vehicle_rates_setpoint));
 	_sub_handles.manual_control_setpoint = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_sub_handles.parameter_update = orb_subscribe(ORB_ID(parameter_update));
+	_sub_handles.encoders = orb_subscribe(ORB_ID(encoders));
 }
 
 void AttitudeController::unsubscribe_all()
@@ -226,6 +232,7 @@ void AttitudeController::unsubscribe_all()
 	orb_unsubscribe(_sub_handles.vehicle_rates_setpoint);
 	orb_unsubscribe(_sub_handles.manual_control_setpoint);
 	orb_unsubscribe(_sub_handles.parameter_update);
+	orb_unsubscribe(_sub_handles.encoders);
 }
 
 void AttitudeController::advertise_open_all()
@@ -281,6 +288,12 @@ void AttitudeController::get_orb_updates()
 	if (updated) {
 		orb_copy(ORB_ID(manual_control_setpoint), _sub_handles.manual_control_setpoint, &_manual_control_setpoint);
 	}
+
+	orb_check(_sub_handles.encoders, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(encoders), _sub_handles.encoders, &_encoders);
+	}
 }
 
 void AttitudeController::params_update()
@@ -303,6 +316,19 @@ void AttitudeController::params_update()
 	param_get(_param_handles.yaw_rate_i, &_control_params.rate_i(2));
 	param_get(_param_handles.yaw_rate_d, &_control_params.rate_d(2));
 	param_get(_param_handles.yaw_ff, &_ff_yaw);
+	param_get(_param_handles.gov_low, &_gov_low);
+	param_get(_param_handles.gov_high, &_gov_high);
+	param_get(_param_handles.gov_p, &_gov_p);
+}
+
+/**
+ * Map val in the range [from1; from2] to a number in the range [to1; to2]
+ *
+ * @return the mapped value
+ */
+float AttitudeController::map_value_linear_range(float val, float from1, float from2, float to1, float to2)
+{
+	return to1 + (val - from1) * (to2 - to1) / (from2 - from1);
 }
 
 void AttitudeController::control_main()
@@ -326,29 +352,51 @@ void AttitudeController::control_main()
 		control_rates(dt); // this sets _actuator_controls_0 values
 	}
 
-	// Assisted control
-	// Attitude stabilized. Throttle *and* collective is set using the
-	// throttle-stick, with throttle limited by the aux1 rc input.
+
+	/*
+		Assisted manual control (sort of)
+
+		May override the attitude angle and rate controllers in lack of
+		a better solution.
+
+		Attitude stabilized. Throttle *and* collective is set using the
+		throttle-stick, with throttle limited by the aux1 rc input.
+
+		aux1 : governor on/off
+		aux2 : main rotor velocity setpoint
+		aux3 : throttle cut
+	*/
 	if (_vehicle_control_mode.flag_control_manual_enabled) {
-		float man_z = _manual_control_setpoint.z;
-		float throttle_max = (_manual_control_setpoint.aux1 + 1.0f) / 2.0f; // map from -1..1 to 0..1
-		float collective_gain = (_manual_control_setpoint.aux2 + 1.0f) / 2.0f + 1.0f; // map from -1..1 to 1..2
-		float throttle;
-		float collective;
+		if (_manual_control_setpoint.aux1 > 0.0f) {
+			// Governor active
+			control_governor(dt); // Sets _actuator_controls_0.control[7] = throttle
+			_actuator_controls_0.control[2] = _manual_control_setpoint.z; // set collective directly
+		} else {
+			// governor NOT active - use the "old" solution
+			float man_z = _manual_control_setpoint.z;
+			float throttle_max = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
+			float throttle;
+			float collective;
 
-		// Throttle curve
-		throttle = man_z;
-		throttle = math::constrain(throttle, 0.0f, throttle_max);
+			// Throttle curve
+			throttle = man_z;
+			throttle = math::constrain(throttle, 0.0f, throttle_max);
 
-		// Collective curve
-		if (man_z >= 0.0f && man_z < 0.4f) {
-			collective = 0.0f;
-		} else if (man_z >= 0.4f && man_z <= 1.0f) {
-			collective = (man_z - 0.4f) * 1.6f * man_z * collective_gain;
+			// Collective curve
+			if (man_z >= 0.0f && man_z < 0.4f) {
+				collective = 0.0f;
+			} else if (man_z >= 0.4f && man_z <= 1.0f) {
+				collective = (man_z - 0.4f) * 1.6f * man_z;
+			}
+
+			_actuator_controls_0.control[2] = collective;
+			_actuator_controls_0.control[7] = throttle;
 		}
+	}
 
-		_actuator_controls_0.control[2] = collective;
-		_actuator_controls_0.control[7] = throttle;
+	// Thottle cut if aux3 is set. Overrides the above!
+	if (_manual_control_setpoint.aux3 > 0.0f) {
+		_actuator_controls_0.control[7] = 0.0f;
 	}
 
 	// Timestamp and publish
@@ -358,6 +406,19 @@ void AttitudeController::control_main()
 	orb_publish(ORB_ID(vehicle_control_debug), _pub_handles.vehicle_control_debug, &_vehicle_control_debug);
 
 	perf_end(_control_loop_perf);
+}
+
+
+void AttitudeController::control_governor(float dt)
+{
+	// Setpoint from manual control input, range [-1; 1]
+	float sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
+
+	// Map encoder velocity to the range [0, 1]
+	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
+
+	float error = sp - scaled_velocity;
+	_actuator_controls_0.control[7] = error * _gov_p;
 }
 
 void AttitudeController::control_attitude(float dt)

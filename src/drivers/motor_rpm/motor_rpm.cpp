@@ -43,9 +43,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <math.h>
 #include <drivers/drv_hrt.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/encoders.h>
@@ -59,6 +61,7 @@ MotorRPM::MotorRPM()
 	, _pub_encoders(nullptr, ORB_ID(encoders))
 	, _pub_debug(nullptr, ORB_ID(debug_key_value))
 {
+	strcpy(_pub_debug.key, "encoder");
 }
 
 MotorRPM::~MotorRPM()
@@ -140,7 +143,7 @@ void MotorRPM::update()
 	}
 
 	// Read response
-	nbytes = read(_fd, _iobuf, 4); // TODO: how many bytes to read?
+	nbytes = read(_fd, _iobuf, 1); // TODO: how many bytes to read?
 
 	if (nbytes < 0) {
 		// handle error?
@@ -148,11 +151,13 @@ void MotorRPM::update()
 		// no bytes read / end-of-file ?
 	}
 
-	// asdf
-	_pub_encoders.counts[0] = 0;
-
-	for (int i = 0; i < 4; i++) {
-		_pub_encoders.counts[0] |= static_cast<uint8_t>(_iobuf[i] << 8 * i);
+	// Incoming 8-bit value is the number of encoder ticks since last read
+	if (_iobuf[0] < 0 || _iobuf[0] > UINT8_MAX) {
+		_pub_encoders.counts = 0;
+		_pub_encoders.is_valid = false;
+	} else {
+		_pub_encoders.counts = _iobuf[0];
+		_pub_encoders.is_valid = true;
 	}
 
 	uint64_t time_now = hrt_absolute_time();
@@ -160,16 +165,24 @@ void MotorRPM::update()
 	_time_last_update = time_now;
 
 	// Calculate ticks per second
-	_pub_encoders.velocity[0] = _pub_encoders.counts[0] / (time_diff / 1000000);
+	_pub_encoders.counts_per_sec = _pub_encoders.counts / (time_diff / 1000000.0f);
+
+	/*
+		Rotor shaft angular velocity in rad/s
+
+		gearing: 8,5:1
+		with 2 ticks per revolution
+
+		TODO: define as parameters
+	*/
+	_pub_encoders.rotor_shaft_velocity = (_pub_encoders.counts_per_sec / 2.0f) / 8.5f * 2.0f * M_PI;
 
 	// Publish topic
 	_pub_encoders.timestamp = time_now;
 	_pub_encoders.update();
 
-
 	// Debug
-	strcpy(_pub_debug.key, "rpm");
-	_pub_debug.timestamp_ms = time_now / 1000.0f;
-	_pub_debug.value = static_cast<float>(_pub_encoders.counts[0]); // BEWARE uint32_t -> float?
+	_pub_debug.timestamp_ms = time_now / 1000;
+	_pub_debug.value = _pub_encoders.rotor_shaft_velocity;
 	_pub_debug.update();
 }
