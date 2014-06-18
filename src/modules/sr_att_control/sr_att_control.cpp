@@ -434,12 +434,14 @@ void AttitudeController::control_governor(float dt)
 		_gov_error = true;
 	}
 
+	float sp;
+
 	if (_gov_setpoint > 0.0f) {
 		// setpoint via param
-		float sp = map_value_linear_range(_gov_setpoint, _gov_low, _gov_high, 0.0f, 1.0f);
+		sp = map_value_linear_range(_gov_setpoint, _gov_low, _gov_high, 0.0f, 1.0f);
 	} else {
 		// use manual aux2, range [-1; 1]
-		float sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
+		sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
 	}
 
 	// Map encoder velocity to the range [0; 1]
