@@ -136,6 +136,7 @@ private:
 		param_t gov_low;
 		param_t gov_high;
 		param_t gov_p;
+		param_t gov_i;
 		param_t gov_setpoint;
 	} _param_handles;
 
@@ -190,6 +191,8 @@ private:
 	float _gov_low;
 	float _gov_high;
 	float _gov_p;
+	float _gov_i;
+	float _gov_i_last;
 	float _gov_setpoint;
 };
 
