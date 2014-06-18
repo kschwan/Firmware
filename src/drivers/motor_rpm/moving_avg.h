@@ -50,8 +50,8 @@ public:
 	void add_value(float value);
 
 private:
-	const unsigned _n;
-	unsigned _p;
+	const int _n;
+	int _p;
 	float _data[6];
 };
 

@@ -50,7 +50,7 @@ MovingAverage::MovingAverage()
 void MovingAverage::reset()
 {
 	for (int i = 0; i < _n; i++) {
-		_data[i] += 0.0f;
+		_data[i] = 0.0f;
 	}
 }
 
@@ -58,7 +58,7 @@ float MovingAverage::get_average() const
 {
 	float sum = 0.0f;
 
-	for (unsigned i = 0; i < _n; i++) {
+	for (int i = 0; i < _n; i++) {
 		sum += _data[i];
 	}
 

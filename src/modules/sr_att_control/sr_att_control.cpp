@@ -438,9 +438,9 @@ void AttitudeController::control_governor(float dt)
 	}
 
 	// If disarmed, reset integral
-	if (!_actuator_armed.armed) {
-		_gov_i_notparam = 0.0f;
-	}
+	// if (!_actuator_armed.armed) {
+	// 	_gov_i_notparam = 0.0f;
+	// }
 
 	float sp = 0;
 
@@ -452,15 +452,17 @@ void AttitudeController::control_governor(float dt)
 		sp =  map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
 	}
 
+	float ff = _gov_i * sp;
+
 	// Map encoder velocity to the range [0; 1]
 	_encoders.rotor_shaft_velocity = math::constrain(_encoders.rotor_shaft_velocity, _gov_low, _gov_high);
 	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
 
 	float error = sp - scaled_velocity;
 
-	 _gov_i_notparam = math::constrain(_gov_i_notparam + error * dt * _gov_i, -1.5f, 1.5f);
+	 // _gov_i_notparam = math::constrain(_gov_i_notparam + error * dt * _gov_i, -1.5f, 1.5f);
 
-	_actuator_controls_0.control[7] = error * _gov_p + _gov_i_notparam;
+	_actuator_controls_0.control[7] = error * _gov_p + ff;
 }
 
 void AttitudeController::control_attitude(float dt)
