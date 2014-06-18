@@ -92,7 +92,7 @@ static int motor_rpm_task(int argc, char *argv[])
 	// Task loop
 	while (!task_should_exit) {
 		mrpm.update();
-		usleep(100000); // Update rate = 100 ms ~ 10Hz
+		usleep(20000); // Update rate = 20 ms ~ 50Hz
 	}
 
 	return EXIT_SUCCESS;
