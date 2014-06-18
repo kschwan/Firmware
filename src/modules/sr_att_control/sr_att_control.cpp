@@ -447,7 +447,7 @@ void AttitudeController::control_governor(float dt)
 	}
 
 	// Map encoder velocity to the range [0; 1]
-	math::constrain(scaled_velocity, _gov_low, _gov_high);
+	math::constrain(_encoders.rotor_shaft_velocity, _gov_low, _gov_high);
 	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
 
 	float error = sp - scaled_velocity;
