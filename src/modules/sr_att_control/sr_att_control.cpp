@@ -93,6 +93,7 @@ AttitudeController::AttitudeController()
 	_param_handles.gov_low = param_find("GOV_LOW");
 	_param_handles.gov_high = param_find("GOV_HIGH");
 	_param_handles.gov_p = param_find("GOV_P");
+	_param_handles.gov_setpoint = param_find("GOV_SETPOINT");
 
 	// Initialize values to 0
 	// TODO: review if this is necessary
@@ -325,6 +326,7 @@ void AttitudeController::params_update()
 	param_get(_param_handles.gov_low, &_gov_low);
 	param_get(_param_handles.gov_high, &_gov_high);
 	param_get(_param_handles.gov_p, &_gov_p);
+	param_get(_param_handles.gov_setpoint, &_gov_setpoint);
 }
 
 /**
@@ -432,10 +434,15 @@ void AttitudeController::control_governor(float dt)
 		_gov_error = true;
 	}
 
-	// Setpoint from manual control input, range [-1; 1]
-	float sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
+	if (_gov_setpoint > 0.0f) {
+		// setpoint via param
+		float sp = map_value_linear_range(_gov_setpoint, _gov_low, _gov_high, 0.0f, 1.0f);
+	} else {
+		// use manual aux2, range [-1; 1]
+		float sp = map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
+	}
 
-	// Map encoder velocity to the range [0, 1]
+	// Map encoder velocity to the range [0; 1]
 	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
 
 	float error = sp - scaled_velocity;
