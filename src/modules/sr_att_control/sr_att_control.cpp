@@ -93,6 +93,7 @@ AttitudeController::AttitudeController()
 	_param_handles.gov_low = param_find("GOV_LOW");
 	_param_handles.gov_high = param_find("GOV_HIGH");
 	_param_handles.gov_p = param_find("GOV_P");
+	_param_handles.gov_i = param_find("GOV_I");
 	_param_handles.gov_setpoint = param_find("GOV_SETPOINT");
 
 	// Initialize values to 0
@@ -326,6 +327,7 @@ void AttitudeController::params_update()
 	param_get(_param_handles.gov_low, &_gov_low);
 	param_get(_param_handles.gov_high, &_gov_high);
 	param_get(_param_handles.gov_p, &_gov_p);
+	param_get(_param_handles.gov_i, &_gov_i);
 	param_get(_param_handles.gov_setpoint, &_gov_setpoint);
 }
 
@@ -435,6 +437,11 @@ void AttitudeController::control_governor(float dt)
 		return;
 	}
 
+	// If disarmed, reset integral
+	if (!_actuator_armed.armed) {
+		_gov_i_notparam = 0.0f;
+	}
+
 	float sp = 0;
 
 	if (_gov_setpoint > 0.0f) {
@@ -450,7 +457,10 @@ void AttitudeController::control_governor(float dt)
 	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
 
 	float error = sp - scaled_velocity;
-	_actuator_controls_0.control[7] = error * _gov_p;
+
+	 _gov_i_notparam = math::constrain(_gov_i_notparam + error * dt * _gov_i, -1.5f, 1.5f);
+
+	_actuator_controls_0.control[7] = error * _gov_p + _gov_i_notparam;
 }
 
 void AttitudeController::control_attitude(float dt)
