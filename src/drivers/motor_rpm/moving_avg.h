@@ -33,45 +33,26 @@
  ****************************************************************************/
 
 /**
- * @file motor_rpm.h
- *
- * Driver for the motor RPM measurement device.
+ * @file moving_avg.h
  *
  * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
  */
 
-#ifndef MOTOR_RPM_H
-#define MOTOR_RPM_H
+#ifndef MOVING_AVG_H
+#define MOVING_AVG_H
 
-#include <termios.h>
-#include <uORB/Publication.hpp>
-#include <uORB/topics/encoders.h>
-#include <uORB/topics/debug_key_value.h>
-#include "moving_avg.h"
-
-class MotorRPM
+class MovingAverage
 {
 public:
-	MotorRPM();
-	~MotorRPM();
-	bool uart_init(char const *device);
-	void uart_deinit();
-	void update();
+	MovingAverage();
+	void reset();
+	float get_average() const;
+	void add_value(float value);
 
 private:
-	struct Cmd {
-		static const uint8_t REQUEST = 10;
-	};
-
-	int _fd;
-	struct termios _uart_config, _orig_uart_config;
-	bool _uart_init_ok;
-	uint64_t _time_last_update;
-	uint8_t _iobuf[8];
-	uORB::Publication<encoders_s> _pub_encoders;
-	uORB::Publication<debug_key_value_s> _pub_debug;
-
-	MovingAverage _filter;
+	const unsigned _n;
+	unsigned _p;
+	float _data[6];
 };
 
-#endif // MOTOR_RPM_H
+#endif // MOVING_AVG_H

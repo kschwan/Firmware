@@ -443,11 +443,10 @@ void AttitudeController::control_governor(float dt)
 	} else {
 		// use manual aux2, range [-1; 1]
 		sp =  map_value_linear_range(_manual_control_setpoint.aux2, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
-		//sp = map_value_linear_range(, -1.0f, 1.0f, 0.0f, 1.0f); // map from -1..1 to 0..1
 	}
 
 	// Map encoder velocity to the range [0; 1]
-	math::constrain(_encoders.rotor_shaft_velocity, _gov_low, _gov_high);
+	_encoders.rotor_shaft_velocity = math::constrain(_encoders.rotor_shaft_velocity, _gov_low, _gov_high);
 	float scaled_velocity = map_value_linear_range(_encoders.rotor_shaft_velocity, _gov_low, _gov_high, 0.0f, 1.0f);
 
 	float error = sp - scaled_velocity;

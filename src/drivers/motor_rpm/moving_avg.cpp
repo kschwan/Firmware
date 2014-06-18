@@ -33,45 +33,39 @@
  ****************************************************************************/
 
 /**
- * @file motor_rpm.h
- *
- * Driver for the motor RPM measurement device.
+ * @file moving_avg.cpp
  *
  * @author Kim Lindberg Schwaner <kschw10@student.sdu.dk>
  */
 
-#ifndef MOTOR_RPM_H
-#define MOTOR_RPM_H
-
-#include <termios.h>
-#include <uORB/Publication.hpp>
-#include <uORB/topics/encoders.h>
-#include <uORB/topics/debug_key_value.h>
 #include "moving_avg.h"
 
-class MotorRPM
+MovingAverage::MovingAverage()
+	: _n(3)
+	, _p(0)
 {
-public:
-	MotorRPM();
-	~MotorRPM();
-	bool uart_init(char const *device);
-	void uart_deinit();
-	void update();
+	reset();
+}
 
-private:
-	struct Cmd {
-		static const uint8_t REQUEST = 10;
-	};
+void MovingAverage::reset()
+{
+	for (int i = 0; i < _n; i++) {
+		_data[i] += 0.0f;
+	}
+}
 
-	int _fd;
-	struct termios _uart_config, _orig_uart_config;
-	bool _uart_init_ok;
-	uint64_t _time_last_update;
-	uint8_t _iobuf[8];
-	uORB::Publication<encoders_s> _pub_encoders;
-	uORB::Publication<debug_key_value_s> _pub_debug;
+float MovingAverage::get_average() const
+{
+	float sum = 0.0f;
 
-	MovingAverage _filter;
-};
+	for (unsigned i = 0; i < _n; i++) {
+		sum += _data[i];
+	}
 
-#endif // MOTOR_RPM_H
+	return sum / _n;
+}
+
+void MovingAverage::add_value(float value)
+{
+	_data[(_p + 1) % _n] = value;
+}

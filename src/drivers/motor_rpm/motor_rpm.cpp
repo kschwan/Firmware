@@ -53,6 +53,7 @@
 #include <uORB/topics/encoders.h>
 #include <uORB/topics/debug_key_value.h>
 #include "motor_rpm.h"
+#include "moving_avg.h"
 
 MotorRPM::MotorRPM()
 	: _fd(-1)
@@ -175,7 +176,8 @@ void MotorRPM::update()
 
 		TODO: define as parameters
 	*/
-	_pub_encoders.rotor_shaft_velocity = (_pub_encoders.counts_per_sec / 2.0f) / 8.5f * 2.0f * M_PI;
+	_filter.add_value((_pub_encoders.counts_per_sec / 2.0f) / 8.5f * 2.0f * M_PI);
+	_pub_encoders.rotor_shaft_velocity = _filter.get_average();
 
 	// Publish topic
 	_pub_encoders.timestamp = time_now;
